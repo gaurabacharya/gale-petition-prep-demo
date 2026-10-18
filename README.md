@@ -43,7 +43,9 @@ For UI development run `npm start` and `npm run dev:web` side by side (the Vite 
 
 ## Try it with the fixtures
 
-`test/fixtures` holds a synthetic specimen passport (country `UTO`), a degree and an offer letter for a fictional employer. The degree and offer letter name omit a middle name, and the passport expires within six months of the start date, so the checks have real discrepancies to show. Upload the three texts to a new case in the UI, review each fact, accept them all, then generate the outputs.
+`samples/` holds three synthetic documents: a specimen passport (country `UTO`), a degree and an offer letter for a fictional employer. The degree and offer letter name omit a middle name, and the passport expires within six months of the start date, so the checks have real discrepancies to show. In the UI, create a case, upload `passport.txt`, `degree.txt` and `offer-letter.txt`, review each fact, accept them all, then generate the outputs. `npm run samples` regenerates the files from `test/fixtures`.
+
+To start a recording from a clean state, run `npm run demo:reset -- --yes`. It deletes every case and audit row in the database named by `DATABASE_URL`, and refuses to run when `DEMO_MODE=false`.
 
 ## Privacy layers
 
@@ -73,7 +75,7 @@ The self-hosted provider is implemented and tested against a fake local server, 
 
 ## Scripts
 
-`npm test`, `npm run typecheck`, `npm run migrate`, `npm start`, `npm run dev:web`, `npm run build:web`.
+`npm test`, `npm run typecheck`, `npm run migrate`, `npm start`, `npm run dev:web`, `npm run build:web`, `npm run samples`, `npm run demo:reset -- --yes`.
 
 ## Out of scope
 
