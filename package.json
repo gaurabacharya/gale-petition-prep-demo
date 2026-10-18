@@ -8,12 +8,17 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "migrate": "tsx src/db/migrate-cli.ts"
+    "migrate": "tsx src/db/migrate-cli.ts",
+    "start": "tsx src/server.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
+    "@hono/node-server": "^2.1.5",
     "effect": "^3.22.3",
-    "pg": "^8.23.1"
+    "hono": "^4.13.13",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.23.1",
+    "unpdf": "^1.7.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

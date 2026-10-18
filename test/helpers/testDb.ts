@@ -18,12 +18,17 @@ function adapt(q: Queryable, transaction: Db["transaction"], close: Db["close"])
   };
 }
 
-/** A fresh in-memory Postgres with every migration applied. */
+function wrapTransaction(tx: Queryable): Db {
+  const inner: Db = adapt(tx, (fn) => fn(inner), async () => {});
+  return inner;
+}
+
+/** A fresh in-memory Postgres with every migration applied. Nested transactions join the outer one. */
 export async function makeTestDb(): Promise<Db> {
   const lite = new PGlite();
   const db: Db = adapt(
     lite,
-    (fn) => lite.transaction((tx) => fn(adapt(tx as unknown as Queryable, (inner) => inner(db), async () => {}))),
+    (fn) => lite.transaction((tx) => fn(wrapTransaction(tx as unknown as Queryable))),
     () => lite.close(),
   );
   await migrate(db, "migrations");

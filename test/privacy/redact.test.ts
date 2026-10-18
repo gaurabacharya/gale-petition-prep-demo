@@ -118,3 +118,31 @@ describe("redact: broader formats", () => {
     expect(redact(input).text).toBe(input);
   });
 });
+
+describe("redact: adversarial input", () => {
+  it("handles a very long run of letters in linear time", { timeout: 5000 }, () => {
+    const started = Date.now();
+    const input = "a".repeat(200_000);
+    expect(redact(input).text).toBe(input);
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it("handles a very long run of digits and separators in linear time", { timeout: 5000 }, () => {
+    const input = "1-".repeat(100_000);
+    expect(redact(input).text).toBe(input);
+  });
+
+  it("still redacts a normal email next to a long run", () => {
+    const { text } = redact(`${"a".repeat(1000)} mail anna.eriksson@example.com`);
+    expect(text).toContain("[[EMAIL_1]]");
+  });
+});
+
+describe("redact: long whitespace after a label", () => {
+  it.each(["passport", "student id", "dob", "ssn", "A#"])("is linear after %s", { timeout: 5000 }, (label) => {
+    const input = `${label}${" ".repeat(100_000)}x`;
+    const started = Date.now();
+    redact(input);
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+});

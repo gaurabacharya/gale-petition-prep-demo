@@ -56,6 +56,25 @@ describe("replaceFields", () => {
     expect(await rows(caseId, "offer_letter")).toEqual([{ name: "salary", value: "95000", status: "approved" }]);
   });
 
+  it("works inside an outer transaction", { timeout: 5000 }, async () => {
+    const caseId = await insertCase(db);
+    await db.transaction(async (tx) => {
+      await replaceFields(tx, caseId, "degree", [field("degree", "BSc")]);
+    });
+    expect(await rows(caseId, "degree")).toEqual([{ name: "degree", value: "BSc", status: "pending" }]);
+  });
+
+  it("rolls back the inner replace when the outer transaction fails", { timeout: 5000 }, async () => {
+    const caseId = await insertCase(db);
+    await expect(
+      db.transaction(async (tx) => {
+        await replaceFields(tx, caseId, "degree", [field("degree", "BSc")]);
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(await rows(caseId, "degree")).toEqual([]);
+  });
+
   it("rolls back the delete if an insert fails", async () => {
     const caseId = await insertCase(db);
     await replaceFields(db, caseId, "degree", [field("degree", "BSc")]);
