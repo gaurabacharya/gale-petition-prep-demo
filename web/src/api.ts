@@ -8,13 +8,17 @@ export interface ChecksResult {
   discrepancies: number;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function send(path: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(path, init);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Request failed (${res.status})`);
   }
-  return (await res.json()) as T;
+  return res;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await (await send(path, init)).json()) as T;
 }
 
 const json = (method: string, body: unknown): RequestInit => ({
@@ -38,3 +42,7 @@ export async function uploadDocument(caseId: string, kind: DocKind, file: File):
   form.set("file", file);
   await request(`/cases/${caseId}/documents`, { method: "POST", body: form });
 }
+export const generateDataSheet = async (caseId: string): Promise<Blob> =>
+  (await send(`/cases/${caseId}/data-sheet`, { method: "POST" })).blob();
+export const generateLetter = (caseId: string): Promise<{ body: string; model: string }> =>
+  request(`/cases/${caseId}/letter`, { method: "POST" });

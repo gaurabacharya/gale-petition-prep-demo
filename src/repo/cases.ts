@@ -195,6 +195,14 @@ export async function getCaseDetail(db: Db, id: string): Promise<CaseDetail | un
   };
 }
 
+export async function saveLetter(db: Db, caseId: string, body: string, model: string): Promise<void> {
+  await db.query(
+    `insert into letters (case_id, body, model) values ($1, $2, $3)
+     on conflict (case_id) do update set body = excluded.body, model = excluded.model, created_at = now()`,
+    [caseId, body, model],
+  );
+}
+
 export async function getCaseChecks(
   db: Db,
   id: string,

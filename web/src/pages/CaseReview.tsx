@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   getCase,
+  generateDataSheet,
+  generateLetter,
   getChecks,
   patchField,
   uploadDocument,
@@ -13,7 +15,9 @@ import {
 import { Button } from "../components/Button";
 import { ChecksCard } from "../components/ChecksCard";
 import { FactRow } from "../components/FactRow";
+import { LetterPanel } from "../components/LetterPanel";
 import { StatusPill } from "../components/StatusPill";
+import { downloadBlob } from "../lib/download";
 import { fieldLevel, sortFacts } from "../lib/sortFacts";
 
 const KINDS: DocKind[] = ["passport", "degree", "offer_letter"];
@@ -34,6 +38,7 @@ export function CaseReview() {
   const [detail, setDetail] = useState<CaseDetail | undefined>();
   const [checks, setChecks] = useState<Check[]>([]);
   const [error, setError] = useState<string | undefined>();
+  const [letter, setLetter] = useState<{ body: string; model: string } | undefined>();
 
   // One refetch path for every change and upload, so approvals and checks never go stale.
   const refresh = useCallback(async () => {
@@ -61,6 +66,15 @@ export function CaseReview() {
     await refresh();
   };
 
+  const output = async (fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+      setError(undefined);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   if (!detail) return <p className="text-sm text-slate-500">{error ?? "Loading…"}</p>;
 
   const status = statusOf(detail, checks);
@@ -79,9 +93,14 @@ export function CaseReview() {
             Review each fact against its source, then accept it. Questionnaire answers are demo data.
           </p>
         </div>
-        <Button variant="primary" disabled={!allApproved} title="Built in spec 04">
-          Generate petition data
-        </Button>
+        <div className="flex gap-2">
+          <Button disabled={!allApproved} onClick={() => void output(async () => setLetter(await generateLetter(id)))}>
+            Draft support letter
+          </Button>
+          <Button variant="primary" disabled={!allApproved} onClick={() => void output(async () => downloadBlob(await generateDataSheet(id), "petition-data.pdf"))}>
+            Generate petition data
+          </Button>
+        </div>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
@@ -139,6 +158,9 @@ export function CaseReview() {
         </div>
         <ChecksCard checks={checks} />
       </div>
+      {letter && (
+        <LetterPanel body={letter.body} model={letter.model} onChange={(body) => setLetter({ ...letter, body })} />
+      )}
     </div>
   );
 }

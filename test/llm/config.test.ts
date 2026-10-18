@@ -26,8 +26,18 @@ describe("llmProviderFromEnv", () => {
     expect(result._tag === "Right" && result.right.name).toBe("mock");
   });
 
-  it("rejects an unknown provider, including selfhosted until spec 04", async () => {
+  it("needs LLM_SERVER_URL for the selfhosted provider", async () => {
     const result = await resolve({ LLM_PROVIDER: "selfhosted" });
-    expect(result._tag === "Left" && result.left.message).toContain("selfhosted");
+    expect(result._tag === "Left" && result.left.message).toContain("LLM_SERVER_URL");
+  });
+
+  it("builds the selfhosted provider from LLM_SERVER_URL and LLM_MODEL", async () => {
+    const result = await resolve({ LLM_PROVIDER: "selfhosted", LLM_SERVER_URL: "http://gpu:8000", LLM_MODEL: "qwen-x" });
+    expect(result._tag === "Right" && [result.right.name, result.right.model]).toEqual(["selfhosted", "qwen-x"]);
+  });
+
+  it("rejects an unknown provider and lists the valid ones", async () => {
+    const result = await resolve({ LLM_PROVIDER: "gpt" });
+    expect(result._tag === "Left" && result.left.message).toContain("anthropic, selfhosted or mock");
   });
 });

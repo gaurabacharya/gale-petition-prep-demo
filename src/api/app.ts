@@ -1,17 +1,22 @@
 import { Effect, Either, Schema, type Layer } from "effect";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import type { AuditLog } from "../audit/audit";
+import { AuditLog } from "../audit/audit";
 import type { Db } from "../db/db";
 import type { LlmClient } from "../llm/LlmClient";
 import { extractAndStore, type ExtractionError } from "../pipeline/extract";
 import { caseExists, createCase, getCaseChecks, getCaseDetail, listCases, updateField } from "../repo/cases";
+import { checkOutputGate } from "../outputs/gate";
+import { buildDataSheet } from "../outputs/dataSheet";
+import { generateLetter } from "../outputs/letter";
 import { pdfToText } from "./pdf";
 
 export interface AppDeps {
   readonly db: Db;
   readonly layer: Layer.Layer<LlmClient | AuditLog>;
   readonly demoMode: boolean;
+  /** Provider and model name recorded with a generated letter. */
+  readonly modelName: string;
 }
 
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -119,6 +124,40 @@ export function makeApp(deps: AppDeps): Hono {
   app.get("/cases/:id/checks", async (c) => {
     const result = await getCaseChecks(deps.db, c.req.param("id"));
     return result ? c.json(result) : notFound(c);
+  });
+
+  app.post("/cases/:id/data-sheet", async (c) => {
+    const gate = await checkOutputGate(deps.db, c.req.param("id"));
+    if (!gate) return notFound(c);
+    if ("blocked" in gate) return c.json({ error: gate.blocked.message }, 409);
+    const { detail } = gate;
+    const value = (kind: string, name: string) => detail.fields.find((f) => f.docKind === kind && f.name === name)?.value;
+    const beneficiary =
+      [value("passport", "given_names"), value("passport", "surname")].filter(Boolean).join(" ") ||
+      value("offer_letter", "name") ||
+      detail.label;
+    const bytes = await buildDataSheet({ caseLabel: detail.label, beneficiary, fields: detail.fields });
+    await Effect.runPromise(
+      Effect.flatMap(AuditLog, (audit) => audit.record("output_generated", { counts: { data_sheet: 1 } })).pipe(
+        Effect.provide(deps.layer),
+      ),
+    );
+    const filename = `petition-data-${detail.label.replace(/[^A-Za-z0-9_-]+/g, "-") || "case"}.pdf`;
+    return new Response(new Uint8Array(bytes), {
+      headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${filename}"` },
+    });
+  });
+
+  app.post("/cases/:id/letter", async (c) => {
+    const caseId = c.req.param("id");
+    const gate = await checkOutputGate(deps.db, caseId);
+    if (!gate) return notFound(c);
+    if ("blocked" in gate) return c.json({ error: gate.blocked.message }, 409);
+    const result = await Effect.runPromise(
+      generateLetter(deps.db, caseId, gate.detail.fields, deps.modelName).pipe(Effect.provide(deps.layer), Effect.either),
+    );
+    if (Either.isLeft(result)) return c.json({ error: result.left.message }, 502);
+    return c.json(result.right);
   });
 
   const uploadLimit = bodyLimit({

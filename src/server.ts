@@ -26,7 +26,7 @@ const demoMode = process.env.DEMO_MODE !== "false";
 
 const port = Number(process.env.PORT ?? 3000);
 const root = new Hono();
-root.route("/", makeApp({ db, layer, demoMode }));
+root.route("/", makeApp({ db, layer, demoMode, modelName: `${provider.name}:${provider.model}` }));
 // Serve the built review UI (npm run build:web) after the API routes; unknown paths fall back to index.html.
 if (existsSync("web/dist")) {
   root.use("/*", serveStatic({ root: "./web/dist" }));

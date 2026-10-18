@@ -16,7 +16,7 @@ afterAll(() => db.close());
 
 function setup(respond: (call: MockCall) => string | object = respondByDocument, demoMode = true, useDb: Db = db) {
   const llm = makeTestLlm(respond);
-  const app = makeApp({ db: useDb, layer: llm.layer, demoMode });
+  const app = makeApp({ db: useDb, layer: llm.layer, demoMode, modelName: "mock" });
   const send = (method: string, path: string, body?: unknown) =>
     app.request(path, {
       method,
@@ -116,6 +116,17 @@ describe("POST /cases/:id/documents", () => {
     const { newCase, uploadDoc } = setup();
     const res = await uploadDoc(await newCase(), "passport", demoPassportText({ country: "USA" }));
     expect(res.status).toBe(403);
+  });
+
+  it("stores nothing and audits the rejection when a real-looking passport is refused", async () => {
+    const { send, newCase, uploadDoc, llm } = setup();
+    const id = await newCase();
+    const res = await uploadDoc(id, "passport", demoPassportText({ country: "USA" }));
+    expect(res.status).toBe(403);
+    expect(llm.entries).toEqual([{ action: "upload_rejected", detail: {} }]);
+    expect(llm.calls).toHaveLength(0);
+    const detail = (await (await send("GET", `/cases/${id}`)).json()) as { documents: unknown[]; fields: unknown[] };
+    expect([detail.documents.length, detail.fields.length]).toEqual([0, 0]);
   });
 
   it("returns 502 with a safe message when the model output is invalid", async () => {

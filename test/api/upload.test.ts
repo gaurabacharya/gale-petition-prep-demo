@@ -15,7 +15,7 @@ afterAll(() => db.close());
 
 function setup() {
   const llm = makeTestLlm(respondByDocument);
-  const app = makeApp({ db, layer: llm.layer, demoMode: true });
+  const app = makeApp({ db, layer: llm.layer, demoMode: true, modelName: "mock" });
   const newCase = async () => {
     const res = await app.request("/cases", {
       method: "POST",
