@@ -64,6 +64,13 @@ describe("saveExtraction", () => {
   });
 });
 
+describe("getCaseDetail answers", () => {
+  it("returns seeded questionnaire answers", async () => {
+    const detail = await getCaseDetail(db, await newCase());
+    expect(detail?.answers["offer_letter.annual_salary"]).toBeDefined();
+  });
+});
+
 describe("listCases", () => {
   it("summarises beneficiary, employer, status and counts", async () => {
     const id = await newCase();
@@ -76,10 +83,25 @@ describe("listCases", () => {
       label: "Eriksson H-1B",
       beneficiary: "ANNA MARIA ERIKSSON",
       employer: "Utopia Technologies Inc.",
-      status: "needs_review",
+      status: "discrepancy",
       documents: 2,
       lowConfidence: 1,
+      caseType: "lottery",
+      employerQuestionnaire: "Approved",
+      beneficiaryQuestionnaire: "Pending",
+      discrepancies: summary?.discrepancies,
+      problems: summary?.problems,
     });
+    expect(summary?.problems).toBeGreaterThan(0);
+  });
+
+  it("is a discrepancy when a problem check fires and fields are still pending", async () => {
+    const id = await newCase();
+    await save(id, "passport", [f("surname", "ERIKSSON", { source: "mrz" }), f("mrz_check_digits", "failed: expiry_date", { source: "mrz" })]);
+    const summary = (await listCases(db)).find((c) => c.id === id);
+    expect(summary?.status).toBe("discrepancy");
+    expect(summary?.problems).toBeGreaterThanOrEqual(1);
+    expect(summary?.discrepancies).toBeGreaterThanOrEqual(summary?.problems ?? 0);
   });
 
   it("is empty with no fields and ready once three documents are fully approved", async () => {

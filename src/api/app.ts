@@ -5,7 +5,7 @@ import type { AuditLog } from "../audit/audit";
 import type { Db } from "../db/db";
 import type { LlmClient } from "../llm/LlmClient";
 import { extractAndStore, type ExtractionError } from "../pipeline/extract";
-import { caseExists, createCase, getCaseDetail, listCases, updateField } from "../repo/cases";
+import { caseExists, createCase, getCaseChecks, getCaseDetail, listCases, updateField } from "../repo/cases";
 import { pdfToText } from "./pdf";
 
 export interface AppDeps {
@@ -114,6 +114,11 @@ export function makeApp(deps: AppDeps): Hono {
   app.get("/cases/:id", async (c) => {
     const detail = await getCaseDetail(deps.db, c.req.param("id"));
     return detail ? c.json(detail) : notFound(c);
+  });
+
+  app.get("/cases/:id/checks", async (c) => {
+    const result = await getCaseChecks(deps.db, c.req.param("id"));
+    return result ? c.json(result) : notFound(c);
   });
 
   const uploadLimit = bodyLimit({

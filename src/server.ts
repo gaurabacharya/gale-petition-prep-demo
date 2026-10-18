@@ -1,4 +1,7 @@
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { existsSync } from "node:fs";
+import { Hono } from "hono";
 import { Effect, Layer } from "effect";
 import pg from "pg";
 import { makeApp } from "./api/app";
@@ -22,5 +25,12 @@ const layer = Layer.merge(audit, makeLlmClientLayer(provider).pipe(Layer.provide
 const demoMode = process.env.DEMO_MODE !== "false";
 
 const port = Number(process.env.PORT ?? 3000);
-serve({ fetch: makeApp({ db, layer, demoMode }).fetch, port });
+const root = new Hono();
+root.route("/", makeApp({ db, layer, demoMode }));
+// Serve the built review UI (npm run build:web) after the API routes; unknown paths fall back to index.html.
+if (existsSync("web/dist")) {
+  root.use("/*", serveStatic({ root: "./web/dist" }));
+  root.get("*", serveStatic({ path: "./web/dist/index.html" }));
+}
+serve({ fetch: root.fetch, port });
 console.log(`Petition Prep API on :${port} (provider ${provider.name}, demo mode ${demoMode ? "on" : "off"})`);

@@ -6,6 +6,8 @@ import {
   type FieldInput,
   type FieldSource,
 } from "../db/fields";
+import { countDiscrepancies, runChecks, type Check } from "../checks/checks";
+import { SEEDED_ANSWERS } from "../seed/questionnaire";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (id: string): boolean => UUID.test(id);
@@ -26,9 +28,14 @@ export interface CaseSummary {
   readonly label: string;
   readonly beneficiary: string | null;
   readonly employer: string | null;
-  readonly status: "empty" | "needs_review" | "ready";
+  readonly status: "empty" | "discrepancy" | "needs_review" | "ready";
   readonly documents: number;
   readonly lowConfidence: number;
+  readonly caseType: string;
+  readonly employerQuestionnaire: string;
+  readonly beneficiaryQuestionnaire: string;
+  readonly discrepancies: number;
+  readonly problems: number;
 }
 
 export interface CaseDetail {
@@ -36,6 +43,7 @@ export interface CaseDetail {
   readonly label: string;
   readonly documents: readonly { kind: DocKind; filename: string }[];
   readonly fields: readonly FieldRow[];
+  readonly answers: Readonly<Record<string, string>>;
 }
 
 export interface SaveExtractionInput {
@@ -99,7 +107,7 @@ const fieldValue = (docKind: string, name: string) =>
   `(select value from fields f where f.case_id = c.id and f.doc_kind = '${docKind}' and f.name = '${name}')`;
 
 const LIST_SQL = `
-  select c.id, c.label,
+  select c.id, c.label, c.case_type, c.employer_questionnaire, c.beneficiary_questionnaire,
     (select count(*) from documents d where d.case_id = c.id)::int as documents,
     (select count(*) from fields f where f.case_id = c.id)::int as total_fields,
     (select count(*) from fields f where f.case_id = c.id and f.status = 'pending')::int as pending_fields,
@@ -122,20 +130,49 @@ interface ListRow {
   surname: string | null;
   offer_name: string | null;
   employer: string | null;
+  case_type: string;
+  employer_questionnaire: string;
+  beneficiary_questionnaire: string;
 }
 
 export async function listCases(db: Db): Promise<CaseSummary[]> {
   const { rows } = await db.query<ListRow>(LIST_SQL);
-  return rows.map((r) => ({
-    id: r.id,
-    label: r.label,
-    beneficiary: [r.given_names, r.surname].filter(Boolean).join(" ") || r.offer_name || null,
-    employer: r.employer,
-    status:
-      r.total_fields === 0 ? "empty" : r.pending_fields > 0 || r.documents < 3 ? "needs_review" : "ready",
-    documents: r.documents,
-    lowConfidence: r.low_confidence,
-  }));
+  const fieldRows = await db.query<FieldDbRow & { case_id: string }>(
+    `select case_id, ${FIELD_COLUMNS} from fields order by doc_kind, name`,
+  );
+  const docRows = await db.query<{ case_id: string; kind: DocKind }>("select case_id, kind from documents");
+  const fieldsBy = new Map<string, FieldRow[]>();
+  for (const r of fieldRows.rows) fieldsBy.set(r.case_id, [...(fieldsBy.get(r.case_id) ?? []), toFieldRow(r)]);
+  const docsBy = new Map<string, { kind: DocKind }[]>();
+  for (const r of docRows.rows) docsBy.set(r.case_id, [...(docsBy.get(r.case_id) ?? []), { kind: r.kind }]);
+
+  return rows.map((r) => {
+    const checks = runChecks(fieldsBy.get(r.id) ?? [], docsBy.get(r.id) ?? []);
+    const problems = checks.filter((c) => c.level === "problem").length;
+    // Once every fact is approved the attorney has resolved the discrepancies, so "ready" wins.
+    const status: CaseSummary["status"] =
+      r.total_fields === 0
+        ? "empty"
+        : r.pending_fields === 0 && r.documents >= 3
+          ? "ready"
+          : problems > 0
+            ? "discrepancy"
+            : "needs_review";
+    return {
+      id: r.id,
+      label: r.label,
+      beneficiary: [r.given_names, r.surname].filter(Boolean).join(" ") || r.offer_name || null,
+      employer: r.employer,
+      status,
+      documents: r.documents,
+      lowConfidence: r.low_confidence,
+      caseType: r.case_type,
+      employerQuestionnaire: r.employer_questionnaire,
+      beneficiaryQuestionnaire: r.beneficiary_questionnaire,
+      discrepancies: countDiscrepancies(checks),
+      problems,
+    };
+  });
 }
 
 export async function getCaseDetail(db: Db, id: string): Promise<CaseDetail | undefined> {
@@ -150,7 +187,22 @@ export async function getCaseDetail(db: Db, id: string): Promise<CaseDetail | un
     `select ${FIELD_COLUMNS} from fields where case_id = $1 order by doc_kind, name`,
     [id],
   );
-  return { ...found.rows[0], documents: documents.rows, fields: fields.rows.map(toFieldRow) };
+  return {
+    ...found.rows[0],
+    documents: documents.rows,
+    fields: fields.rows.map(toFieldRow),
+    answers: SEEDED_ANSWERS,
+  };
+}
+
+export async function getCaseChecks(
+  db: Db,
+  id: string,
+): Promise<{ checks: Check[]; discrepancies: number } | undefined> {
+  const detail = await getCaseDetail(db, id);
+  if (!detail) return undefined;
+  const checks = runChecks(detail.fields, detail.documents);
+  return { checks, discrepancies: countDiscrepancies(checks) };
 }
 
 /** An edit marks the field attorney-sourced and pending, unless the same request also sets a status. */

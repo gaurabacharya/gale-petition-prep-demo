@@ -137,7 +137,7 @@ describe("GET /cases", () => {
     expect(list.find((c) => c.id === id)).toMatchObject({
       beneficiary: "ANNA MARIA ERIKSSON",
       employer: "Utopia Technologies Inc.",
-      status: "needs_review",
+      status: "discrepancy",
       documents: 2,
     });
   });
@@ -197,6 +197,37 @@ describe("PATCH /fields/:id", () => {
     const { send } = setup();
     expect((await send("PATCH", "/fields/00000000-0000-0000-0000-000000000000", { status: "approved" })).status).toBe(404);
     expect((await send("PATCH", "/fields/nope", { status: "approved" })).status).toBe(404);
+  });
+});
+
+describe("GET /cases/:id/checks", () => {
+  it("returns missing-document problems for an empty case", async () => {
+    const { send, newCase } = setup();
+    const res = await send("GET", `/cases/${await newCase()}/checks`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { checks: { id: string; level: string }[]; discrepancies: number };
+    expect(body.checks.filter((c) => c.id.startsWith("missing_document_") && c.level === "problem")).toHaveLength(3);
+    expect(body.discrepancies).toBe(3);
+  });
+
+  it("returns 404 for a malformed or unknown id", async () => {
+    const { send } = setup();
+    expect((await send("GET", "/cases/not-a-uuid/checks")).status).toBe(404);
+    expect((await send("GET", "/cases/00000000-0000-0000-0000-000000000000/checks")).status).toBe(404);
+  });
+
+  it("reports the middle-name warnings after the three fixtures are uploaded", async () => {
+    const { send, newCase, uploadDoc } = setup();
+    const id = await newCase();
+    await uploadDoc(id, "passport", demoPassportText());
+    await uploadDoc(id, "degree", DEGREE_TEXT);
+    await uploadDoc(id, "offer_letter", OFFER_LETTER_TEXT);
+    const body = (await (await send("GET", `/cases/${id}/checks`)).json()) as {
+      checks: { id: string; level: string }[];
+      discrepancies: number;
+    };
+    expect(body.checks.find((c) => c.id === "name_mismatch_degree")?.level).toBe("warning");
+    expect(body.discrepancies).toBeGreaterThan(0);
   });
 });
 
