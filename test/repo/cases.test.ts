@@ -27,12 +27,12 @@ const f = (name: string, value: string, over: Partial<FieldInput> = {}): FieldIn
 });
 const save = (caseId: string, kind: "passport" | "degree" | "offer_letter", fields: FieldInput[], filename = `${kind}.txt`) =>
   saveExtraction(db, { caseId, kind, filename, rawText: "SECRET RAW TEXT", fields });
-const newCase = async () => (await createCase(db, "Eriksson H-1B")).id;
+const newCase = async () => (await createCase(db, "Doe H-1B")).id;
 
 describe("cases", () => {
   it("creates a case and finds it", async () => {
-    const created = await createCase(db, "Eriksson H-1B");
-    expect(created.label).toBe("Eriksson H-1B");
+    const created = await createCase(db, "Doe H-1B");
+    expect(created.label).toBe("Doe H-1B");
     expect(await caseExists(db, created.id)).toBe(true);
   });
 
@@ -74,14 +74,14 @@ describe("getCaseDetail answers", () => {
 describe("listCases", () => {
   it("summarises beneficiary, employer, status and counts", async () => {
     const id = await newCase();
-    await save(id, "passport", [f("given_names", "ANNA MARIA", { source: "mrz" }), f("surname", "ERIKSSON", { source: "mrz" })]);
-    await save(id, "offer_letter", [f("name", "Anna Eriksson"), f("employer", "Utopia Technologies Inc."), f("duties", "", { confidence: "low" })]);
+    await save(id, "passport", [f("given_names", "JOHN MICHAEL", { source: "mrz" }), f("surname", "DOE", { source: "mrz" })]);
+    await save(id, "offer_letter", [f("name", "John Doe"), f("employer", "Utopia Technologies Inc."), f("duties", "", { confidence: "low" })]);
 
     const summary = (await listCases(db)).find((c) => c.id === id);
     expect(summary).toEqual({
       id,
-      label: "Eriksson H-1B",
-      beneficiary: "ANNA MARIA ERIKSSON",
+      label: "Doe H-1B",
+      beneficiary: "JOHN MICHAEL DOE",
       employer: "Utopia Technologies Inc.",
       status: "discrepancy",
       documents: 2,
@@ -97,7 +97,7 @@ describe("listCases", () => {
 
   it("is a discrepancy when a problem check fires and fields are still pending", async () => {
     const id = await newCase();
-    await save(id, "passport", [f("surname", "ERIKSSON", { source: "mrz" }), f("mrz_check_digits", "failed: expiry_date", { source: "mrz" })]);
+    await save(id, "passport", [f("surname", "DOE", { source: "mrz" }), f("mrz_check_digits", "failed: expiry_date", { source: "mrz" })]);
     const summary = (await listCases(db)).find((c) => c.id === id);
     expect(summary?.status).toBe("discrepancy");
     expect(summary?.problems).toBeGreaterThanOrEqual(1);
@@ -108,20 +108,20 @@ describe("listCases", () => {
     const id = await newCase();
     expect((await listCases(db)).find((c) => c.id === id)?.status).toBe("empty");
 
-    await save(id, "passport", [f("surname", "ERIKSSON", { source: "mrz" })]);
+    await save(id, "passport", [f("surname", "DOE", { source: "mrz" })]);
     await save(id, "degree", [f("degree", "BSc")]);
-    await save(id, "offer_letter", [f("name", "Anna Eriksson")]);
+    await save(id, "offer_letter", [f("name", "John Doe")]);
     await db.query("update fields set status = 'approved' where case_id = $1", [id]);
 
     const summary = (await listCases(db)).find((c) => c.id === id);
     expect(summary?.status).toBe("ready");
-    expect(summary?.beneficiary).toBe("ERIKSSON");
+    expect(summary?.beneficiary).toBe("DOE");
   });
 
   it("falls back to the offer-letter name when there is no passport", async () => {
     const id = await newCase();
-    await save(id, "offer_letter", [f("name", "Anna Eriksson")]);
-    expect((await listCases(db)).find((c) => c.id === id)?.beneficiary).toBe("Anna Eriksson");
+    await save(id, "offer_letter", [f("name", "John Doe")]);
+    expect((await listCases(db)).find((c) => c.id === id)?.beneficiary).toBe("John Doe");
   });
 });
 

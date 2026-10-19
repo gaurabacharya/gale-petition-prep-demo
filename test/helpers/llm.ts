@@ -14,7 +14,7 @@ export function makeTestLlm(respond: (call: MockCall) => string | object) {
 const x = (value: string, quote = value) => ({ value, quote });
 
 export const DEGREE_RESPONSE = {
-  name: x("Anna Eriksson"),
+  name: x("John Doe"),
   degree: x("Bachelor of Science", "Bachelor of Science in Computer Science"),
   field_of_study: x("Computer Science", "Bachelor of Science in Computer Science"),
   institution: x("Utopia University", "UTOPIA UNIVERSITY"),
@@ -22,7 +22,7 @@ export const DEGREE_RESPONSE = {
 };
 
 export const OFFER_RESPONSE = {
-  name: x("Anna Eriksson", "Dear Anna Eriksson"),
+  name: x("John Doe", "Dear John Doe"),
   job_title: x("Software Engineer", "the position of Software Engineer"),
   duties: x("designing and building backend services"),
   annual_salary: x("$95,000", "Your annual salary will be $95,000"),

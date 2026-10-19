@@ -25,12 +25,12 @@ const docs = [{ kind: "passport" as const }, { kind: "degree" as const }, { kind
 const baseline = (over: Record<string, string> = {}): FieldRow[] => {
   const v = (k: string, d: string) => over[k] ?? d;
   return [
-    f("passport", "given_names", "ANNA MARIA", { source: "mrz" }),
-    f("passport", "surname", "ERIKSSON", { source: "mrz" }),
+    f("passport", "given_names", "JOHN MICHAEL", { source: "mrz" }),
+    f("passport", "surname", "DOE", { source: "mrz" }),
     f("passport", "expiry_date", v("expiry", "2027-01-15"), { source: "mrz" }),
     f("passport", "mrz_check_digits", v("mrz", "ok"), { source: "mrz" }),
-    f("degree", "name", v("degreeName", "Anna Eriksson")),
-    f("offer_letter", "name", "Anna Eriksson"),
+    f("degree", "name", v("degreeName", "John Doe")),
+    f("offer_letter", "name", "John Doe"),
     f("offer_letter", "annual_salary", v("salary", "$95,000")),
     f("offer_letter", "start_date", v("start", "October 1, 2026")),
   ];
@@ -47,7 +47,7 @@ describe("runChecks", () => {
   });
 
   it("flags a different surname as a problem", () => {
-    const cs = runChecks(baseline({ degreeName: "Anna Larsson" }), docs);
+    const cs = runChecks(baseline({ degreeName: "John Smith" }), docs);
     expect(find(cs, "name_mismatch_degree")?.level).toBe("problem");
   });
 

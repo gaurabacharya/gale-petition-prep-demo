@@ -39,12 +39,12 @@ describe.each(Object.keys(factories))("LlmClient contract: %s provider", (kind) 
   };
 
   it("returns schema-valid output", async () => {
-    const { result } = await run(() => ({ name: "Anna", salary: 95000 }));
-    expect(result._tag === "Right" && result.right).toEqual({ name: "Anna", salary: 95000 });
+    const { result } = await run(() => ({ name: "John", salary: 95000 }));
+    expect(result._tag === "Right" && result.right).toEqual({ name: "John", salary: 95000 });
   });
 
   it("accepts JSON wrapped in a markdown fence", async () => {
-    const { result } = await run(() => '```json\n{"name":"Anna","salary":95000}\n```');
+    const { result } = await run(() => '```json\n{"name":"John","salary":95000}\n```');
     expect(result._tag).toBe("Right");
   });
 
@@ -57,9 +57,9 @@ describe.each(Object.keys(factories))("LlmClient contract: %s provider", (kind) 
   });
 
   it("audits provider, model and redaction counts with no values", async () => {
-    const { entries, name } = await run(() => ({ name: "Anna Eriksson", salary: 95000 }), { SSN: 2 });
+    const { entries, name } = await run(() => ({ name: "John Doe", salary: 95000 }), { SSN: 2 });
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ action: "llm_call", detail: { provider: name, redactions: { SSN: 2 } } });
-    expect(JSON.stringify(entries)).not.toContain("Anna");
+    expect(JSON.stringify(entries)).not.toContain("John");
   });
 });

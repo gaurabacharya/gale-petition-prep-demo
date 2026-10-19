@@ -41,9 +41,21 @@ For UI development run `npm start` and `npm run dev:web` side by side (the Vite 
 | `DATABASE_URL` | Postgres connection string |
 | `PORT` | Server port (default 3000) |
 
-## Try it with the fixtures
+## Try it with the demo data
 
-`samples/` holds three synthetic documents: a specimen passport (country `UTO`), a degree and an offer letter for a fictional employer. The degree and offer letter name omit a middle name, and the passport expires within six months of the start date, so the checks have real discrepancies to show. In the UI, create a case, upload `passport.txt`, `degree.txt` and `offer-letter.txt`, review each fact, accept them all, then generate the outputs. `npm run samples` regenerates the files from `test/fixtures`.
+The demo beneficiary is **John Doe**, a fictional person with synthetic documents in `samples/`: a specimen passport (country `UTO`), a degree and an offer letter from a fictional employer.
+
+**Fastest:** on the Cases page click **Fill in demo info**. It creates a "Doe H-1B" case, uploads all three documents and opens the review screen. On an open case the same button uploads whichever documents are still missing.
+
+**By hand:** create a case, then upload `samples/passport.txt`, `samples/degree.txt` and `samples/offer-letter.txt`.
+
+| Document | What it holds |
+| --- | --- |
+| Passport | `DOE`, `JOHN MICHAEL`, number `L898902C3`, expires 2027-01-15 |
+| Degree | John Doe, Bachelor of Science in Computer Science, Utopia University |
+| Offer letter | John Doe, Software Engineer at Utopia Technologies Inc., $95,000, starts October 1, 2026 |
+
+The degree and offer letter omit the middle name and the passport expires within six months of the start date, so the checks show a name warning and a validity warning. Then review each fact, accept them all, and generate the outputs. `npm run samples` regenerates the files from `src/demo/sampleDocs.ts`.
 
 To start a recording from a clean state, run `npm run demo:reset -- --yes`. It deletes every case and audit row in the database named by `DATABASE_URL`, and refuses to run when `DEMO_MODE=false`.
 

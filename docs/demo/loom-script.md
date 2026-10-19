@@ -13,7 +13,7 @@
 | Time | Show | Say |
 | --- | --- | --- |
 | 0:00 | Review queue (Cases tab) | "This is Petition Prep, a tool for an immigration attorney or paralegal preparing an H-1B petition." |
-| 0:15 | New case, then upload the three samples | "The passport is parsed locally from its machine-readable zone and never goes to a model. The degree and offer letter have IDs redacted, then go to Claude. Everything here is synthetic." |
+| 0:15 | Click "Fill in demo info" (creates the John Doe case and uploads the three samples) | "The passport is parsed locally from its machine-readable zone and never goes to a model. The degree and offer letter have IDs redacted, then go to Claude. Everything here is synthetic." |
 | 0:40 | Case review, checks card | "These checks are plain code, not the model. They caught the missing middle name and a passport that expires within six months of the start date." |
 | 1:05 | Edit one value, then Accept the rest | "The model drafts, and the attorney approves every fact. An edit marks it as attorney-sourced and sends it back to pending." |
 | 1:25 | Generate petition data, then Draft support letter | "Outputs stay locked until every fact is approved. The data sheet is built from the approved facts only, and the letter draft leaves brackets for anything the documents don't say." |

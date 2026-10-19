@@ -21,7 +21,7 @@ const rows = (over: Record<string, Partial<FieldRow>> = {}): FieldRow[] =>
   );
 
 const text = async (fields: FieldRow[]) => {
-  const bytes = await buildDataSheet({ caseLabel: "Eriksson H-1B", beneficiary: "Anna Maria Eriksson", fields });
+  const bytes = await buildDataSheet({ caseLabel: "Doe H-1B", beneficiary: "John Michael Doe", fields });
   return { bytes, text: (await pdfToText(bytes)).replace(/\s+/g, " ") };
 };
 
@@ -29,8 +29,8 @@ describe("buildDataSheet", () => {
   it("is a PDF with the beneficiary and case label in the header", async () => {
     const { bytes, text: t } = await text(rows());
     expect(Buffer.from(bytes.slice(0, 4)).toString()).toBe("%PDF");
-    expect(t).toContain("Anna Maria Eriksson");
-    expect(t).toContain("Eriksson H-1B");
+    expect(t).toContain("John Michael Doe");
+    expect(t).toContain("Doe H-1B");
   });
 
   it("lists every approved value under its section title", async () => {

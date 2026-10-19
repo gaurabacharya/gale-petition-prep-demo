@@ -22,13 +22,13 @@ describe("extractPassport", () => {
       "issuing_country",
       "mrz_check_digits",
     ]);
-    expect(byName.surname.value).toBe("ERIKSSON");
-    expect(byName.given_names.value).toBe("ANNA MARIA");
+    expect(byName.surname.value).toBe("DOE");
+    expect(byName.given_names.value).toBe("JOHN MICHAEL");
     expect(byName.passport_number.value).toBe("L898902C3");
     expect(byName.nationality.value).toBe("UTO");
     expect(byName.date_of_birth.value).toBe("1994-08-12");
     expect(byName.date_of_birth.quote).toBe("940812");
-    expect(byName.sex.value).toBe("F");
+    expect(byName.sex.value).toBe("M");
     expect(byName.expiry_date.value).toBe("2027-01-15");
     expect(byName.issuing_country.value).toBe("UTO");
     expect(byName.mrz_check_digits.value).toBe("ok");

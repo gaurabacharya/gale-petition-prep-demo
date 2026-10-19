@@ -8,7 +8,7 @@ import { makeBlankPdf, makePdf } from "../helpers/pdf";
 describe("pdfToText", () => {
   it("extracts text with the MRZ lines still on separate lines", async () => {
     const text = await pdfToText(await makePdf(demoPassportText()));
-    expect(text).toContain("ERIKSSON");
+    expect(text).toContain("DOE");
     expect(Either.isRight(parseMrz(text))).toBe(true);
   });
 

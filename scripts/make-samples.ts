@@ -1,14 +1,7 @@
-// Writes the synthetic sample documents to samples/ from the test fixtures: `npm run samples`.
+// Writes the synthetic sample documents to samples/ from src/demo/sampleDocs.ts: `npm run samples`.
 import { mkdirSync, writeFileSync } from "node:fs";
-import { DEGREE_TEXT } from "../test/fixtures/degree";
-import { OFFER_LETTER_TEXT } from "../test/fixtures/offerLetter";
-import { demoPassportText } from "../test/fixtures/passport";
+import { DEMO_DOCUMENTS } from "../src/demo/sampleDocs";
 
 mkdirSync("samples", { recursive: true });
-const files: Record<string, string> = {
-  "passport.txt": demoPassportText(),
-  "degree.txt": DEGREE_TEXT,
-  "offer-letter.txt": OFFER_LETTER_TEXT,
-};
-for (const [name, text] of Object.entries(files)) writeFileSync(`samples/${name}`, `${text}\n`);
-console.log(`Wrote ${Object.keys(files).map((n) => `samples/${n}`).join(", ")}`);
+for (const d of DEMO_DOCUMENTS) writeFileSync(`samples/${d.filename}`, `${d.text}\n`);
+console.log(`Wrote ${DEMO_DOCUMENTS.map((d) => `samples/${d.filename}`).join(", ")}`);

@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
   getChecks: vi.fn(),
   patchField: vi.fn(),
   uploadDocument: vi.fn(),
+  uploadDemoDocuments: vi.fn(),
 }));
 vi.mock("../../web/src/api", () => api);
 afterEach(cleanup);
@@ -35,7 +36,7 @@ beforeEach(() => {
   ];
   api.getCase.mockImplementation(async () => ({
     id: "c1",
-    label: "Eriksson H-1B",
+    label: "Doe H-1B",
     documents: [{ kind: "offer_letter", filename: "offer.txt" }],
     fields: store.fields,
     answers: { "offer_letter.job_title": "Software Engineer" },
@@ -130,5 +131,11 @@ describe("CaseReview", () => {
     await waitFor(() => expect(api.getCase.mock.calls.length).toBeGreaterThan(before));
     await waitFor(() => expect(within(rowOf("employer")).queryByText("Approved")).toBeNull());
     expect((screen.getByRole("button", { name: "Generate petition data" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("Fill in demo info uploads only the documents that are missing", async () => {
+    await show();
+    fireEvent.click(screen.getByRole("button", { name: "Fill in demo info" }));
+    await waitFor(() => expect(api.uploadDemoDocuments).toHaveBeenCalledWith("c1", ["passport", "degree"]));
   });
 });

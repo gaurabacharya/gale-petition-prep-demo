@@ -20,7 +20,7 @@ function setup() {
     const res = await app.request("/cases", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label: "Eriksson H-1B" }),
+      body: JSON.stringify({ label: "Doe H-1B" }),
     });
     return ((await res.json()) as { id: string }).id;
   };

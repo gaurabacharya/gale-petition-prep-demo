@@ -12,25 +12,25 @@ const f = (name: string, value: string, source: FieldInput["source"] = "llm"): F
 
 export const BASE_FIELDS: Record<DocKind, FieldInput[]> = {
   passport: [
-    f("surname", "ERIKSSON", "mrz"),
-    f("given_names", "ANNA MARIA", "mrz"),
+    f("surname", "DOE", "mrz"),
+    f("given_names", "JOHN MICHAEL", "mrz"),
     f("passport_number", "L898902C3", "mrz"),
     f("nationality", "UTO", "mrz"),
     f("date_of_birth", "1994-08-12", "mrz"),
-    f("sex", "F", "mrz"),
+    f("sex", "M", "mrz"),
     f("expiry_date", "2028-06-01", "mrz"),
     f("issuing_country", "UTO", "mrz"),
     f("mrz_check_digits", "ok", "mrz"),
   ],
   degree: [
-    f("name", "Anna Eriksson"),
+    f("name", "John Doe"),
     f("degree", "Bachelor of Science"),
     f("field_of_study", "Computer Science"),
     f("institution", "Utopia University"),
     f("date_conferred", "May 20, 2012"),
   ],
   offer_letter: [
-    f("name", "Anna Eriksson"),
+    f("name", "John Doe"),
     f("job_title", "Software Engineer"),
     f("duties", "designing and building backend services"),
     f("annual_salary", "$95,000"),
@@ -45,7 +45,7 @@ export async function seedCase(
   db: Db,
   opts: { approve?: boolean; override?: Partial<Record<DocKind, FieldInput[]>> } = {},
 ): Promise<string> {
-  const { id } = await createCase(db, "Eriksson H-1B");
+  const { id } = await createCase(db, "Doe H-1B");
   for (const kind of ["passport", "degree", "offer_letter"] as const) {
     await saveExtraction(db, {
       caseId: id,

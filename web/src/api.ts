@@ -1,3 +1,4 @@
+import { DEMO_DOCUMENTS } from "../../src/demo/sampleDocs";
 import type { Check } from "../../src/checks/checks";
 import type { CaseDetail, CaseSummary, FieldRow } from "../../src/repo/cases";
 
@@ -46,3 +47,11 @@ export const generateDataSheet = async (caseId: string): Promise<Blob> =>
   (await send(`/cases/${caseId}/data-sheet`, { method: "POST" })).blob();
 export const generateLetter = (caseId: string): Promise<{ body: string; model: string }> =>
   request(`/cases/${caseId}/letter`, { method: "POST" });
+
+/** Uploads the synthetic John Doe documents for the given kinds (all three by default). */
+export async function uploadDemoDocuments(caseId: string, only?: readonly DocKind[]): Promise<void> {
+  for (const d of DEMO_DOCUMENTS) {
+    if (only && !only.includes(d.kind)) continue;
+    await uploadDocument(caseId, d.kind, new File([d.text], d.filename, { type: "text/plain" }));
+  }
+}

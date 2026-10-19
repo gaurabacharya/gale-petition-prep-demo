@@ -17,7 +17,7 @@ beforeAll(async () => {
 });
 afterAll(() => db.close());
 
-const newCase = async () => (await createCase(db, "Eriksson H-1B")).id;
+const newCase = async () => (await createCase(db, "Doe H-1B")).id;
 const upload = (layer: Layer.Layer<LlmClient | AuditLog>, input: ExtractInput, demoMode = true) =>
   Effect.runPromise(extractAndStore(db, { demoMode }, input).pipe(Effect.provide(layer), Effect.either));
 const input = (caseId: string, kind: ExtractInput["kind"], text: string, filename = `${kind}.txt`): ExtractInput => ({
@@ -131,6 +131,6 @@ describe("extractAndStore", () => {
     await upload(layer, input(await newCase(), "degree", DEGREE_TEXT));
     const extraction = entries.find((e) => e.action === "extraction");
     expect(extraction).toEqual({ action: "extraction", detail: { counts: { fields: 5, low_confidence: 0 } } });
-    expect(JSON.stringify(entries)).not.toContain("Anna");
+    expect(JSON.stringify(entries)).not.toContain("John");
   });
 });

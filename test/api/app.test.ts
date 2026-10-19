@@ -23,7 +23,7 @@ function setup(respond: (call: MockCall) => string | object = respondByDocument,
       headers: { "content-type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  const newCase = async () => ((await (await send("POST", "/cases", { label: "Eriksson H-1B" })).json()) as { id: string }).id;
+  const newCase = async () => ((await (await send("POST", "/cases", { label: "Doe H-1B" })).json()) as { id: string }).id;
   const uploadDoc = (id: string, kind: string, text: string, filename = `${kind}.txt`) =>
     send("POST", `/cases/${id}/documents`, { kind, filename, text });
   return { app, send, newCase, uploadDoc, llm };
@@ -32,9 +32,9 @@ function setup(respond: (call: MockCall) => string | object = respondByDocument,
 describe("POST /cases", () => {
   it("creates a case", async () => {
     const { send } = setup();
-    const res = await send("POST", "/cases", { label: "Eriksson H-1B" });
+    const res = await send("POST", "/cases", { label: "Doe H-1B" });
     expect(res.status).toBe(201);
-    expect(await res.json()).toMatchObject({ label: "Eriksson H-1B" });
+    expect(await res.json()).toMatchObject({ label: "Doe H-1B" });
   });
 
   it("returns 400 for a missing label or a body that is not JSON", async () => {
@@ -146,7 +146,7 @@ describe("GET /cases", () => {
 
     const list = (await (await send("GET", "/cases")).json()) as { id: string }[];
     expect(list.find((c) => c.id === id)).toMatchObject({
-      beneficiary: "ANNA MARIA ERIKSSON",
+      beneficiary: "JOHN MICHAEL DOE",
       employer: "Utopia Technologies Inc.",
       status: "discrepancy",
       documents: 2,
@@ -182,9 +182,9 @@ describe("PATCH /fields/:id", () => {
 
   it("edits a value, marking it attorney-sourced and pending", async () => {
     const { send, fieldId } = await firstField();
-    const res = await send("PATCH", `/fields/${fieldId}`, { value: "Anna Maria Eriksson" });
+    const res = await send("PATCH", `/fields/${fieldId}`, { value: "John Michael Doe" });
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ value: "Anna Maria Eriksson", source: "attorney", status: "pending" });
+    expect(await res.json()).toMatchObject({ value: "John Michael Doe", source: "attorney", status: "pending" });
   });
 
   it("approves a field", async () => {

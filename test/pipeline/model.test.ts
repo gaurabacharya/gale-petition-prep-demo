@@ -30,7 +30,7 @@ describe("extractDegree", () => {
 
     expect(result.right.map((f) => f.name)).toEqual(["name", "degree", "field_of_study", "institution", "date_conferred"]);
     const f = byName(result.right);
-    expect(f.name).toMatchObject({ value: "Anna Eriksson", quote: "Anna Eriksson", source: "llm", confidence: "high" });
+    expect(f.name).toMatchObject({ value: "John Doe", quote: "John Doe", source: "llm", confidence: "high" });
     expect(f.institution).toMatchObject({ value: "Utopia University", quote: "UTOPIA UNIVERSITY", confidence: "high" });
   });
 

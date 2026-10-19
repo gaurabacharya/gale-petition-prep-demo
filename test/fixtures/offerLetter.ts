@@ -1,15 +1,1 @@
-export const OFFER_LETTER_TEXT = [
-  "Utopia Technologies Inc.",
-  "Offer of Employment",
-  "",
-  "Dear Anna Eriksson,",
-  "",
-  "We are pleased to offer you the position of Software Engineer.",
-  "Your duties will include designing and building backend services.",
-  "Your annual salary will be $95,000.",
-  "Your start date will be October 1, 2026.",
-  "Your worksite will be 100 Main Street, Springfield.",
-  "",
-  "Contact: hr@utopiatech.example or (212) 555-0147.",
-  "Your SSN on file is 123-45-6789.",
-].join("\n");
+export { OFFER_LETTER_TEXT } from "../../src/demo/sampleDocs";

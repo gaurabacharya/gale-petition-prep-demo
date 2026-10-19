@@ -28,8 +28,8 @@ describe("parseMrz", () => {
   it("parses the specimen with every check digit passing", () => {
     const r = ok(SPECIMEN_PASSPORT_TEXT);
     expect(r.checks).toEqual({ passportNumber: true, dateOfBirth: true, expiryDate: true, composite: true });
-    expect(r.surname.value).toBe("ERIKSSON");
-    expect(r.givenNames.value).toBe("ANNA MARIA");
+    expect(r.surname.value).toBe("DOE");
+    expect(r.givenNames.value).toBe("JOHN MICHAEL");
     expect(r.passportNumber.value).toBe("L898902C3");
     expect(r.issuingCountry.value).toBe("UTO");
     expect(r.nationality.value).toBe("UTO");
@@ -52,7 +52,7 @@ describe("parseMrz", () => {
   it("parses MRZ text pasted from a PDF: CRLF, lowercase, stray spaces, header text", () => {
     const text = `Passport\r\n${L1.toLowerCase()}\r\n${L2.slice(0, 22)} ${L2.slice(22)}\r\n`;
     const r = ok(text);
-    expect(r.surname.value).toBe("ERIKSSON");
+    expect(r.surname.value).toBe("DOE");
     expect(r.checks.composite).toBe(true);
   });
 
@@ -61,7 +61,7 @@ describe("parseMrz", () => {
   });
 
   it("parses when a label is on the same line as the first MRZ line", () => {
-    expect(ok(`MRZ: ${L1}\n${L2}`).surname.value).toBe("ERIKSSON");
+    expect(ok(`MRZ: ${L1}\n${L2}`).surname.value).toBe("DOE");
   });
 
   it("returns an empty given-names string for a surname-only passport", () => {

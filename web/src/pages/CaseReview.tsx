@@ -6,6 +6,7 @@ import {
   generateLetter,
   getChecks,
   patchField,
+  uploadDemoDocuments,
   uploadDocument,
   type CaseDetail,
   type CaseSummary,
@@ -110,7 +111,14 @@ export function CaseReview() {
         </p>
       )}
 
-      <div className="mb-6 flex flex-wrap gap-4">
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <Button
+          disabled={KINDS.every((k) => detail.documents.some((d) => d.kind === k))}
+          onClick={() => void change(() => uploadDemoDocuments(id, KINDS.filter((k) => !detail.documents.some((d) => d.kind === k))))}
+          title="Uploads John Doe's synthetic documents for any kind not yet uploaded"
+        >
+          Fill in demo info
+        </Button>
         {KINDS.map((kind) => (
           <label key={kind} className="text-sm text-slate-600">
             <span className="mr-2 font-medium capitalize">

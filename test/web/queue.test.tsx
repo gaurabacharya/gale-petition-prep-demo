@@ -1,18 +1,20 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CaseSummary } from "../../web/src/api";
 import { ReviewQueue } from "../../web/src/pages/ReviewQueue";
 
 const listCases = vi.hoisted(() => vi.fn());
-vi.mock("../../web/src/api", () => ({ listCases, createCase: vi.fn() }));
+const createCase = vi.hoisted(() => vi.fn());
+const uploadDemoDocuments = vi.hoisted(() => vi.fn());
+vi.mock("../../web/src/api", () => ({ listCases, createCase, uploadDemoDocuments }));
 afterEach(cleanup);
 
 const row = (over: Partial<CaseSummary> = {}): CaseSummary => ({
   id: "c1",
-  label: "Eriksson H-1B",
-  beneficiary: "ANNA MARIA ERIKSSON",
+  label: "Doe H-1B",
+  beneficiary: "JOHN MICHAEL DOE",
   employer: "Utopia Technologies Inc.",
   status: "needs_review",
   documents: 3,
@@ -37,7 +39,7 @@ describe("ReviewQueue", () => {
   it("renders the spec columns", async () => {
     listCases.mockResolvedValue([row()]);
     await show("all");
-    await screen.findByText("ANNA MARIA ERIKSSON");
+    await screen.findByText("JOHN MICHAEL DOE");
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
     expect(headers).toEqual([
       "Beneficiary",
@@ -54,7 +56,7 @@ describe("ReviewQueue", () => {
   it("shows the employer under the name, the count, and a link to the case", async () => {
     listCases.mockResolvedValue([row({ status: "discrepancy", discrepancies: 3 })]);
     await show("all");
-    const r = (await screen.findByText("ANNA MARIA ERIKSSON")).closest("tr")!;
+    const r = (await screen.findByText("JOHN MICHAEL DOE")).closest("tr")!;
     expect(within(r).getByText("Utopia Technologies Inc.")).toBeTruthy();
     expect(within(r).getByText("3")).toBeTruthy();
     expect(within(r).getByText("Discrepancy").className).toContain("red");
@@ -69,5 +71,24 @@ describe("ReviewQueue", () => {
     cleanup();
     await show("all");
     expect(await screen.findByText("READY PERSON")).toBeTruthy();
+  });
+
+  it("Fill in demo info creates the Doe case and uploads the demo documents", async () => {
+    listCases.mockResolvedValue([]);
+    createCase.mockResolvedValue({ id: "new1", label: "Doe H-1B" });
+    uploadDemoDocuments.mockResolvedValue(undefined);
+    await show("all");
+    fireEvent.click(await screen.findByRole("button", { name: /Fill in demo info/ }));
+    await waitFor(() => expect(uploadDemoDocuments).toHaveBeenCalledWith("new1"));
+    expect(createCase).toHaveBeenCalledWith("Doe H-1B");
+  });
+
+  it("shows the error when filling in demo info fails", async () => {
+    listCases.mockResolvedValue([]);
+    createCase.mockResolvedValue({ id: "new2", label: "Doe H-1B" });
+    uploadDemoDocuments.mockRejectedValue(new Error("model unavailable"));
+    await show("all");
+    fireEvent.click(await screen.findByRole("button", { name: /Fill in demo info/ }));
+    await screen.findByText("model unavailable");
   });
 });

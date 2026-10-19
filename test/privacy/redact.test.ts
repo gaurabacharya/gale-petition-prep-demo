@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { redact, restore } from "../../src/privacy/redact";
 
 const SAMPLE = [
-  "Dear Anna Maria Eriksson,",
+  "Dear John Michael Doe,",
   "SSN: 123-45-6789. A-number: A123456789.",
   "Email anna.eriksson@example.com or call (212) 555-0147.",
   "Passport No. L898902C3. Date of birth: 1974-08-12. Student ID: S2019-4471.",
@@ -32,7 +32,7 @@ describe("redact", () => {
 
   it("keeps names, job title and salary", () => {
     const { text } = redact(SAMPLE);
-    expect(text).toContain("Anna Maria Eriksson");
+    expect(text).toContain("John Michael Doe");
     expect(text).toContain("Software Engineer");
     expect(text).toContain("$95,000");
   });

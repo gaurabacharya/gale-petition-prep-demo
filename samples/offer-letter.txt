@@ -1,7 +1,7 @@
 Utopia Technologies Inc.
 Offer of Employment
 
-Dear Anna Eriksson,
+Dear John Doe,
 
 We are pleased to offer you the position of Software Engineer.
 Your duties will include designing and building backend services.
