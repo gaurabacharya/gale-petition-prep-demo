@@ -19,6 +19,7 @@
     "@anthropic-ai/sdk": "^0.135.0",
     "@electric-sql/pglite": "^0.5.10",
     "@hono/node-server": "^2.1.5",
+    "@tesseract.js-data/eng": "^1.0.0",
     "clsx": "^2.1.1",
     "effect": "^3.22.3",
     "hono": "^4.13.13",
@@ -29,9 +30,11 @@
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4",
     "tailwind-merge": "^3.7.0",
+    "tesseract.js": "^7.0.0",
     "unpdf": "^1.7.0"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^0.1.100",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",

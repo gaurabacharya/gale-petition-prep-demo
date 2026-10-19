@@ -50,11 +50,11 @@ For UI development run `npm start` and `npm run dev:web` side by side (the Vite 
 
 ## Try it with the demo data
 
-The demo beneficiary is **John Doe**, a fictional person with synthetic documents in `samples/`: a specimen passport (country `UTO`), a degree and an offer letter from a fictional employer.
+The demo beneficiary is **John Doe**, a fictional person with synthetic documents in `samples/`: a scanned specimen passport (`passport.png`, country `UTO`), a degree PDF and an offer letter PDF from a fictional employer.
 
-**Guided:** on the Cases page click **Fill in demo info**. It creates a "Doe H-1B" case and opens a walkthrough. Drag each document onto the drop area (or press Add), watch the processing stages run (local passport parsing, redaction, model extraction, quote grading), and see its facts fade into the table. You can also drag a real file in from your desktop. On any open case the same button opens the walkthrough.
+**Guided:** on the Cases page click **+ New case**, name it (for example "Doe H-1B") and press Create. An **Add documents** pop-up opens over the case. Press **Fill example** to show John Doe's three files (each has a **View** link), then drag them onto the drop area one at a time, or press Add. Watch the processing stages (OCR for the passport scan, redaction and model extraction for the PDFs) while the facts fade into the table behind. You can also drag your own files in from the desktop. **Add documents** on any case reopens the pop-up.
 
-**By hand:** create a case, then upload `samples/passport.txt`, `samples/degree.txt` and `samples/offer-letter.txt`.
+**By hand:** create a case, then upload `samples/passport.png`, `samples/degree.pdf` and `samples/offer-letter.pdf`.
 
 | Document | What it holds |
 | --- | --- |
@@ -62,7 +62,9 @@ The demo beneficiary is **John Doe**, a fictional person with synthetic document
 | Degree | John Doe, Bachelor of Science in Computer Science, Utopia University |
 | Offer letter | John Doe, Software Engineer at Utopia Technologies Inc., $95,000, starts October 1, 2026 |
 
-The degree and offer letter omit the middle name and the passport expires within six months of the start date, so the checks show a name warning and a validity warning. Then review each fact, accept them all, and generate the outputs. `npm run samples` regenerates the files from `src/demo/sampleDocs.ts`.
+The degree and offer letter omit the middle name and the passport expires within six months of the start date, so the checks show a name warning and a validity warning. Then review each fact, accept them all, and generate the outputs. `npm run samples` regenerates the files from `src/demo/sampleDocs.ts` (it draws the passport with a macOS system font, so run it on a Mac).
+
+**Scans:** a PNG or JPEG passport is read by OCR (tesseract.js) on the server, with the language data bundled so nothing is fetched, and then parsed from its MRZ with the check digits validated. The image never goes to a model. OCR is only accepted for passports; other documents must be PDFs with a text layer or text files. The first scan takes a couple of seconds while the OCR worker starts.
 
 To start a recording from a clean state, run `npm run demo:reset -- --yes`. It deletes every case and audit row in the database named by `DATABASE_URL`, and refuses to run when `DEMO_MODE=false`.
 

@@ -13,7 +13,7 @@ import {
   type DocKind,
 } from "../api";
 import { Button } from "../components/Button";
-import { DemoWalkthrough } from "../components/DemoWalkthrough";
+import { AddDocumentsDialog } from "../components/AddDocumentsDialog";
 import { ChecksCard } from "../components/ChecksCard";
 import { FactRow } from "../components/FactRow";
 import { LetterPanel } from "../components/LetterPanel";
@@ -40,7 +40,7 @@ export function CaseReview() {
   const [checks, setChecks] = useState<Check[]>([]);
   const [error, setError] = useState<string | undefined>();
   const [params] = useSearchParams();
-  const [showDemo, setShowDemo] = useState(params.get("demo") === "1");
+  const [adding, setAdding] = useState(params.get("new") === "1");
   const [fresh, setFresh] = useState<Record<string, number>>({});
   const [letter, setLetter] = useState<{ body: string; model: string } | undefined>();
 
@@ -126,9 +126,7 @@ export function CaseReview() {
       )}
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <Button onClick={() => setShowDemo((v) => !v)} aria-pressed={showDemo}>
-          Fill in demo info
-        </Button>
+        <Button onClick={() => setAdding(true)}>Add documents</Button>
         {KINDS.map((kind) => (
           <label key={kind} className="text-sm text-slate-600">
             <span className="mr-2 font-medium capitalize">
@@ -147,8 +145,12 @@ export function CaseReview() {
         ))}
       </div>
 
-      {showDemo && (
-        <DemoWalkthrough uploaded={detail.documents.map((d) => d.kind)} onUpload={uploadAndReveal} />
+      {adding && (
+        <AddDocumentsDialog
+          uploaded={detail.documents.map((d) => d.kind)}
+          onUpload={uploadAndReveal}
+          onClose={() => setAdding(false)}
+        />
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">

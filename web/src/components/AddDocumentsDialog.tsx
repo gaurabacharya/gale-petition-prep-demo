@@ -1,9 +1,11 @@
-import { CircleCheck, FileText, Loader2, ShieldCheck } from "lucide-react";
+import { CircleCheck, Eye, FileText, Loader2, ShieldCheck } from "lucide-react";
 import { useContext, useEffect, useState, type DragEvent } from "react";
 import { DEMO_DOCUMENTS } from "../../../src/demo/sampleDocs";
 import type { DocKind } from "../api";
 import { ModelModeContext } from "../lib/mode";
 import { Button } from "./Button";
+import { DocumentPreview } from "./DocumentPreview";
+import { Modal } from "./Modal";
 
 const TITLES: Record<DocKind, string> = { passport: "Passport", degree: "Degree", offer_letter: "Offer letter" };
 const DEMO_TYPE = "application/x-demo-document";
@@ -12,14 +14,15 @@ const DEMO_TYPE = "application/x-demo-document";
 function stagesFor(kind: DocKind, replay: boolean): { label: string; note?: string }[] {
   if (kind === "passport") {
     return [
-      { label: "Reading the document text" },
+      { label: "Reading the scanned image" },
+      { label: "Running OCR on the passport scan", note: "On this server, the image goes nowhere else" },
       { label: "Parsing the machine-readable zone locally", note: "Never sent to a model" },
       { label: "Validating the ICAO check digits" },
       { label: "Saving the facts for review" },
     ];
   }
   return [
-    { label: "Reading the document text" },
+    { label: "Reading the PDF text layer" },
     { label: "Redacting SSN, ID numbers, email and phone", note: "Replaced with tokens before any model call" },
     { label: "Extracting facts with the model", note: replay ? "Recorded Claude answer, replayed" : "Claude via the Anthropic API" },
     { label: "Grading each quote against the document" },
@@ -28,6 +31,7 @@ function stagesFor(kind: DocKind, replay: boolean): { label: string; note?: stri
 }
 
 interface Props {
+  onClose: () => void;
   uploaded: readonly DocKind[];
   /** Uploads one file and resolves once the new facts are on screen. */
   onUpload: (kind: DocKind, file: File) => Promise<void>;
@@ -35,13 +39,16 @@ interface Props {
   stageMs?: number;
 }
 
-export function DemoWalkthrough({ uploaded, onUpload, stageMs = 700 }: Props) {
+export function AddDocumentsDialog({ uploaded, onUpload, onClose, stageMs = 700 }: Props) {
   const replay = useContext(ModelModeContext) === "replay";
   const [busy, setBusy] = useState<DocKind | undefined>();
   const [stage, setStage] = useState(0);
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  const [viewing, setViewing] = useState<DocKind | undefined>();
+  const [showExamples, setShowExamples] = useState(false);
   const nextKind = DEMO_DOCUMENTS.find((d) => !uploaded.includes(d.kind))?.kind;
+  const complete = nextKind === undefined;
   const stages = busy ? stagesFor(busy, replay) : [];
 
   // Walk the stage list while the real upload runs; the last stage waits for the upload to finish.
@@ -68,9 +75,16 @@ export function DemoWalkthrough({ uploaded, onUpload, stageMs = 700 }: Props) {
     }
   };
 
-  const addSample = (kind: DocKind) => {
+  // The sample is a real PNG or PDF served from /samples, so it is uploaded the same way as a file from disk.
+  const addSample = async (kind: DocKind) => {
     const d = DEMO_DOCUMENTS.find((x) => x.kind === kind)!;
-    return process(kind, new File([d.text], d.filename, { type: "text/plain" }));
+    try {
+      const res = await fetch(`/samples/${d.filename}`);
+      if (!res.ok) throw new Error(`Could not load ${d.filename}`);
+      await process(kind, new File([await res.blob()], d.filename, { type: d.mime }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   const onDrop = (e: DragEvent) => {
@@ -84,15 +98,24 @@ export function DemoWalkthrough({ uploaded, onUpload, stageMs = 700 }: Props) {
   };
 
   return (
-    <section aria-label="Demo walkthrough" className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-5">
-      <h2 className="font-serif text-xl font-semibold text-slate-900">Demo: add John Doe's documents</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Drag each synthetic document onto the drop area, or press Add. Watch it get processed, then its facts appear
-        below.
-      </p>
+    <Modal label="Add documents" onClose={onClose} light maxWidth="max-w-4xl">
+      <div className="overflow-auto p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-serif text-xl font-semibold text-slate-900">Add documents</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Drop a passport scan, degree and offer letter here, or fill in the example. Each is processed, then its
+            facts appear on the case behind this window.
+          </p>
+        </div>
+        <Button aria-pressed={showExamples} onClick={() => setShowExamples((v) => !v)}>
+          <FileText className="h-4 w-4" aria-hidden /> Fill example
+        </Button>
+      </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-[1fr_1.2fr]">
-        <ul className="space-y-2">
+      <div className={`mt-4 grid gap-4 ${showExamples ? "md:grid-cols-[1fr_1.2fr]" : ""}`}>
+        {showExamples && (
+        <ul className="space-y-2" aria-label="Example documents">
           {DEMO_DOCUMENTS.map((d) => {
             const done = uploaded.includes(d.kind);
             return (
@@ -108,6 +131,15 @@ export function DemoWalkthrough({ uploaded, onUpload, stageMs = 700 }: Props) {
                   <span className="font-medium">{TITLES[d.kind]}</span>
                   <span className="text-xs text-slate-400">{d.filename}</span>
                 </span>
+                <span className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label={`View ${TITLES[d.kind]}`}
+                    className="inline-flex items-center gap-1 text-xs text-slate-600 underline"
+                    onClick={() => setViewing(d.kind)}
+                  >
+                    <Eye className="h-3.5 w-3.5" aria-hidden /> View
+                  </button>
                 {done ? (
                   <span className="inline-flex items-center gap-1 text-emerald-700">
                     <CircleCheck className="h-4 w-4" aria-hidden /> Added
@@ -117,10 +149,12 @@ export function DemoWalkthrough({ uploaded, onUpload, stageMs = 700 }: Props) {
                     Add
                   </Button>
                 )}
+                </span>
               </li>
             );
           })}
         </ul>
+        )}
 
         <div
           data-testid="drop-zone"
@@ -158,13 +192,29 @@ export function DemoWalkthrough({ uploaded, onUpload, stageMs = 700 }: Props) {
               </ol>
             </div>
           ) : nextKind ? (
-            <p className="text-slate-500">Drop the {TITLES[nextKind].toLowerCase()} here.</p>
+            <p className="text-slate-500">
+              Drop the {TITLES[nextKind].toLowerCase()} here{showExamples ? "" : ", or press Fill example to use John Doe's"}.
+            </p>
           ) : (
-            <p className="text-emerald-700">All three documents are in. Review each fact and accept it below.</p>
+            <p className="text-emerald-700">All three documents are in. Review each fact and accept it.</p>
           )}
           {error && <p className="mt-2 text-red-700">{error}</p>}
         </div>
       </div>
-    </section>
+      <div className="mt-5 flex justify-end">
+        <Button variant={complete ? "primary" : "secondary"} onClick={onClose} disabled={!!busy}>
+          {complete ? "Review facts" : "Close"}
+        </Button>
+      </div>
+      </div>
+      {viewing && (
+        <DocumentPreview
+          title={TITLES[viewing]}
+          src={`/samples/${DEMO_DOCUMENTS.find((d) => d.kind === viewing)!.filename}`}
+          mime={DEMO_DOCUMENTS.find((d) => d.kind === viewing)!.mime}
+          onClose={() => setViewing(undefined)}
+        />
+      )}
+    </Modal>
   );
 }

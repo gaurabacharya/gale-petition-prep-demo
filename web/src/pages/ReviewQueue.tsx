@@ -1,9 +1,9 @@
-import { FileText, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { DEMO_CASE_LABEL } from "../../../src/demo/sampleDocs";
-import { createCase, listCases, type CaseSummary } from "../api";
+import { listCases, type CaseSummary } from "../api";
 import { Button } from "../components/Button";
+import { NewCaseDialog } from "../components/NewCaseDialog";
 import { StatusPill } from "../components/StatusPill";
 
 const COLUMNS = [
@@ -20,8 +20,7 @@ const COLUMNS = [
 export function ReviewQueue({ filter }: { filter: "all" | "queue" }) {
   const [cases, setCases] = useState<CaseSummary[] | undefined>();
   const [error, setError] = useState<string | undefined>();
-  const [label, setLabel] = useState("");
-  const [filling, setFilling] = useState(false);
+  const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,24 +28,6 @@ export function ReviewQueue({ filter }: { filter: "all" | "queue" }) {
   }, []);
 
   const shown = (cases ?? []).filter((c) => filter === "all" || c.status !== "ready");
-
-  const create = async () => {
-    const made = await createCase(label.trim());
-    navigate(`/case/${made.id}`);
-  };
-
-  // Creates the demo case and opens it with the walkthrough, where the documents are added one by one.
-  const fillDemo = async () => {
-    setFilling(true);
-    setError(undefined);
-    try {
-      const made = await createCase(DEMO_CASE_LABEL);
-      navigate(`/case/${made.id}?demo=1`);
-    } catch (e) {
-      setError((e as Error).message);
-      setFilling(false);
-    }
-  };
 
   return (
     <div>
@@ -61,29 +42,18 @@ export function ReviewQueue({ filter }: { filter: "all" | "queue" }) {
           </p>
         </div>
         {filter === "all" && (
-          <form
-            className="flex items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (label.trim()) void create();
-            }}
-          >
-            <input
-              aria-label="Case label"
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Case label"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-            />
-            <Button variant="primary" type="submit" disabled={!label.trim()}>
-              <Plus className="h-4 w-4" aria-hidden /> New case
-            </Button>
-            <Button type="button" disabled={filling} onClick={() => void fillDemo()} title="Creates a case and walks through adding John Doe's synthetic documents">
-              <FileText className="h-4 w-4" aria-hidden /> {filling ? "Creating…" : "Fill in demo info"}
-            </Button>
-          </form>
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" aria-hidden /> New case
+          </Button>
         )}
       </div>
+
+      {creating && (
+        <NewCaseDialog
+          onClose={() => setCreating(false)}
+          onCreated={(id) => navigate(`/case/${id}?new=1`)}
+        />
+      )}
 
       {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
 

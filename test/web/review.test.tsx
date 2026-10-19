@@ -27,7 +27,12 @@ const field = (name: string, value: string, over: Partial<FieldRow> = {}): Field
   ...over,
 });
 
+// The walkthrough loads the sample PNG and PDFs from /samples, so serve small stand-ins.
+const stubSamples = () =>
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["sample"]), { status: 200 })));
+
 beforeEach(() => {
+  stubSamples();
   store.fields = [field("employer", "Utopia"), field("job_title", "Engineer"), field("annual_salary", "negotiable")];
   store.checks = [
     { id: "salary", level: "problem", message: "The offer letter has no usable annual salary.", fieldRefs: [{ docKind: "offer_letter", name: "annual_salary" }] },
@@ -132,30 +137,98 @@ describe("CaseReview", () => {
     expect((screen.getByRole("button", { name: "Generate petition data" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("Fill in demo info opens the walkthrough, and Add processes one document at a time", async () => {
-    api.uploadDocument.mockClear();
+  const open = async (path = "/case/c1") => {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/case/:id" element={<CaseReview />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByText("annual_salary");
+  };
+
+  it("opens the Add documents dialog right after a case is created, with the examples hidden", async () => {
+    await open("/case/c1?new=1");
+    const dialog = screen.getByRole("dialog", { name: "Add documents" });
+    expect(within(dialog).queryByRole("button", { name: "Add Passport" })).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: /Fill example/ }));
+    // The fixture case already has its offer letter, so that card says Added instead of offering Add.
+    for (const t of ["Passport", "Degree"]) {
+      expect(within(dialog).getByRole("button", { name: `Add ${t}` })).toBeTruthy();
+    }
+    expect(within(dialog).getByText("Added")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "View Offer letter" })).toBeTruthy();
+  });
+
+  it("stays closed on a normal visit and reopens with the Add documents button", async () => {
     await show();
-    expect(screen.queryByLabelText("Demo walkthrough")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Fill in demo info" }));
-    expect(screen.getByLabelText("Demo walkthrough")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add documents" }));
+    expect(screen.getByRole("dialog", { name: "Add documents" })).toBeTruthy();
+  });
+
+  it("Add processes one document at a time and shows the OCR stage for the passport", async () => {
+    api.uploadDocument.mockClear();
+    await open("/case/c1?new=1");
+    fireEvent.click(screen.getByRole("button", { name: /Fill example/ }));
     fireEvent.click(screen.getByRole("button", { name: "Add Passport" }));
     await screen.findByText(/Processing passport/);
+    expect(screen.getByText("Running OCR on the passport scan")).toBeTruthy();
     expect(screen.getByText("Parsing the machine-readable zone locally")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Add Degree" }) as HTMLButtonElement).disabled).toBe(true);
     await waitFor(() => expect(api.uploadDocument).toHaveBeenCalledTimes(1), { timeout: 5000 });
     expect(api.uploadDocument.mock.calls[0][1]).toBe("passport");
+    expect(api.uploadDocument.mock.calls[0][2].name).toBe("passport.png");
     await waitFor(() => expect(screen.queryByText(/Processing passport/)).toBeNull(), { timeout: 5000 });
   }, 10000);
 
   it("accepts a sample document dragged onto the drop area", async () => {
     api.uploadDocument.mockClear();
-    await show();
-    fireEvent.click(screen.getByRole("button", { name: "Fill in demo info" }));
-    fireEvent.drop(screen.getByTestId("drop-zone"), {
-      dataTransfer: { getData: () => "degree", files: [] },
-    });
+    await open("/case/c1?new=1");
+    fireEvent.drop(screen.getByTestId("drop-zone"), { dataTransfer: { getData: () => "degree", files: [] } });
     await waitFor(() => expect(api.uploadDocument).toHaveBeenCalledTimes(1), { timeout: 6000 });
     expect(api.uploadDocument.mock.calls[0][1]).toBe("degree");
-    expect(api.uploadDocument.mock.calls[0][2].name).toBe("degree.txt");
+    expect(api.uploadDocument.mock.calls[0][2].name).toBe("degree.pdf");
+    expect(api.uploadDocument.mock.calls[0][2].type).toBe("application/pdf");
   }, 10000);
+
+  it("takes a real file dropped from the desktop as the next document still needed", async () => {
+    api.uploadDocument.mockClear();
+    await open("/case/c1?new=1");
+    const file = new File(["x"], "my-passport.png", { type: "image/png" });
+    fireEvent.drop(screen.getByTestId("drop-zone"), { dataTransfer: { getData: () => "", files: [file] } });
+    await waitFor(() => expect(api.uploadDocument).toHaveBeenCalledTimes(1), { timeout: 6000 });
+    expect(api.uploadDocument.mock.calls[0][1]).toBe("passport");
+    expect(api.uploadDocument.mock.calls[0][2]).toBe(file);
+  }, 10000);
+
+  it("lets the user view each example document before adding it", async () => {
+    await open("/case/c1?new=1");
+    fireEvent.click(screen.getByRole("button", { name: /Fill example/ }));
+    fireEvent.click(screen.getByRole("button", { name: "View Passport" }));
+    const preview = screen.getByRole("dialog", { name: "Preview of Passport" });
+    expect((within(preview).getByAltText("Passport") as HTMLImageElement).getAttribute("src")).toBe("/samples/passport.png");
+    fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+    expect(screen.queryByRole("dialog", { name: "Preview of Passport" })).toBeNull();
+    // Escape closes only the preview, leaving the Add documents dialog open.
+    fireEvent.click(screen.getByRole("button", { name: "View Offer letter" }));
+    expect(screen.getByTitle("Offer letter").getAttribute("src")).toBe("/samples/offer-letter.pdf");
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Preview of Offer letter" }), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Preview of Offer letter" })).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Add documents" })).toBeTruthy();
+  });
+
+  it("offers Review facts once all three documents are in, and it closes the dialog", async () => {
+    api.getCase.mockImplementation(async () => ({
+      id: "c1",
+      label: "Doe H-1B",
+      documents: ["passport", "degree", "offer_letter"].map((kind) => ({ kind, filename: `${kind}.x` })),
+      fields: store.fields,
+      answers: {},
+    }));
+    await open("/case/c1?new=1");
+    fireEvent.click(screen.getByRole("button", { name: "Review facts" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });

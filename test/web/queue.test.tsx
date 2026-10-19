@@ -77,7 +77,7 @@ describe("ReviewQueue", () => {
     expect(await screen.findByText("READY PERSON")).toBeTruthy();
   });
 
-  it("Fill in demo info creates the Doe case and opens it in walkthrough mode", async () => {
+  it("+ New case opens a dialog; Create makes the case and opens it with the Add documents dialog flag", async () => {
     listCases.mockResolvedValue([]);
     createCase.mockResolvedValue({ id: "new1", label: "Doe H-1B" });
     render(
@@ -88,16 +88,42 @@ describe("ReviewQueue", () => {
         </Routes>
       </MemoryRouter>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: /Fill in demo info/ }));
-    expect(await screen.findByText("/case/new1?demo=1")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Fill in demo info/ })).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: /New case/ }));
+    const dialog = screen.getByRole("dialog", { name: "New case" });
+    const create = within(dialog).getByRole("button", { name: "Create case" }) as HTMLButtonElement;
+    expect(create.disabled).toBe(true);
+    fireEvent.change(within(dialog).getByLabelText("Case label"), { target: { value: "Doe H-1B" } });
+    fireEvent.click(create);
+    expect(await screen.findByText("/case/new1?new=1")).toBeTruthy();
     expect(createCase).toHaveBeenCalledWith("Doe H-1B");
   });
 
-  it("shows the error when creating the demo case fails", async () => {
+  it("puts the cursor in the Case label field when the dialog opens", async () => {
+    listCases.mockResolvedValue([]);
+    await show("all");
+    fireEvent.click(await screen.findByRole("button", { name: /New case/ }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Case label"));
+  });
+
+  it("shows the error in the dialog when creating the case fails", async () => {
     listCases.mockResolvedValue([]);
     createCase.mockRejectedValue(new Error("database unavailable"));
     await show("all");
-    fireEvent.click(await screen.findByRole("button", { name: /Fill in demo info/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /New case/ }));
+    fireEvent.change(screen.getByLabelText("Case label"), { target: { value: "X" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create case" }));
     await screen.findByText("database unavailable");
+    expect(screen.getByRole("dialog", { name: "New case" })).toBeTruthy();
+  });
+
+  it("Cancel closes the dialog without creating anything", async () => {
+    listCases.mockResolvedValue([]);
+    createCase.mockClear();
+    await show("all");
+    fireEvent.click(await screen.findByRole("button", { name: /New case/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(createCase).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,7 @@ import { caseExists, createCase, getCaseChecks, getCaseDetail, listCases, update
 import { checkOutputGate } from "../outputs/gate";
 import { buildDataSheet } from "../outputs/dataSheet";
 import { generateLetter } from "../outputs/letter";
+import { ocrToText } from "./ocr";
 import { pdfToText } from "./pdf";
 
 export interface AppDeps {
@@ -60,6 +61,10 @@ function checkText(text: string, filename: string, binaryStatus: 400 | 422): Upl
   return undefined;
 }
 
+const isImageBytes = (b: Uint8Array) =>
+  (b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) ||
+  (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff);
+
 async function readMultipart(c: Context): Promise<UploadResult> {
   const form = await c.req.parseBody().catch(() => undefined);
   const file = form?.file;
@@ -68,6 +73,20 @@ async function readMultipart(c: Context): Promise<UploadResult> {
     return { ok: false, status: 400, message: "kind and file are required" };
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
+  if (isImageBytes(bytes) || file.type.startsWith("image/")) {
+    // Scans are read by OCR on this server. Only passports may be scanned: they never reach a model.
+    if (kind !== "passport") {
+      return { ok: false, status: 422, message: "Scanned images are only supported for passports" };
+    }
+    let scanned: string;
+    try {
+      scanned = await ocrToText(bytes);
+    } catch {
+      return { ok: false, status: 422, message: "Could not read the scan" };
+    }
+    const problem = checkText(scanned, file.name, 422);
+    return problem ?? { ok: true, upload: { kind: "passport", filename: file.name, text: scanned } };
+  }
   const isPdf = isPdfBytes(bytes) || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   let text: string;
   try {

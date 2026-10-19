@@ -66,9 +66,12 @@ export const OFFER_LETTER_TEXT = [
 
 export const DEMO_CASE_LABEL = "Doe H-1B";
 
-/** The three demo documents in upload order. */
+/**
+ * The three demo documents in upload order. `text` is what each file contains (the passport scan shows
+ * the same MRZ); `scripts/make-samples.ts` renders them as passport.png, degree.pdf and offer-letter.pdf.
+ */
 export const DEMO_DOCUMENTS = [
-  { kind: "passport", filename: "passport.txt", text: demoPassportText() },
-  { kind: "degree", filename: "degree.txt", text: DEGREE_TEXT },
-  { kind: "offer_letter", filename: "offer-letter.txt", text: OFFER_LETTER_TEXT },
+  { kind: "passport", filename: "passport.png", mime: "image/png", text: demoPassportText() },
+  { kind: "degree", filename: "degree.pdf", mime: "application/pdf", text: DEGREE_TEXT },
+  { kind: "offer_letter", filename: "offer-letter.pdf", mime: "application/pdf", text: OFFER_LETTER_TEXT },
 ] as const;
