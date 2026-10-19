@@ -16,7 +16,7 @@ For this demo I'm using Claude with fake data. In a real workflow, client docume
 
 ## Setup
 
-Requires Node 20+ and Postgres.
+Requires Node 20+. Postgres is optional (see below).
 
 ```bash
 npm install
@@ -25,6 +25,9 @@ npm run migrate
 npm run build:web           # builds the review UI into web/dist
 npm start                   # API and UI on http://localhost:3000
 ```
+
+No Postgres? Set `DATABASE_URL=pglite:./.pglite` in `.env` and skip `createdb`. The server applies migrations itself on startup. PGlite allows one process at a time, so stop the server before `npm run demo:reset`.
+
 
 For UI development run `npm start` and `npm run dev:web` side by side (the Vite dev server proxies to the API).
 
@@ -38,7 +41,7 @@ For UI development run `npm start` and `npm run dev:web` side by side (the Vite 
 | `LLM_SERVER_URL` | Required for `selfhosted`: base URL of an OpenAI-compatible chat endpoint, such as vLLM |
 | `LLM_MODEL` | Optional model name sent to the self-hosted server |
 | `DEMO_MODE` | `true` by default. Rejects any passport whose MRZ country is not `UTO` |
-| `DATABASE_URL` | Postgres connection string |
+| `DATABASE_URL` | Postgres connection string, or `pglite:./.pglite` for embedded Postgres with nothing to install (`pglite:memory` forgets everything on exit) |
 | `PORT` | Server port (default 3000) |
 
 ## Try it with the demo data

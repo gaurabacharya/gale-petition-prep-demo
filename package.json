@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
+    "@electric-sql/pglite": "^0.5.10",
     "@hono/node-server": "^2.1.5",
     "clsx": "^2.1.1",
     "effect": "^3.22.3",
@@ -31,7 +32,6 @@
     "unpdf": "^1.7.0"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.10",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",

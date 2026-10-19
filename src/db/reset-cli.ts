@@ -1,5 +1,4 @@
-import pg from "pg";
-import { makePgDb } from "./pg";
+import { openDb } from "./open";
 
 // Wipes every case, document, field, letter and audit row so a recording starts from a known state.
 const url = process.env.DATABASE_URL;
@@ -16,7 +15,7 @@ if (!process.argv.includes("--yes")) {
   process.exit(1);
 }
 
-const db = makePgDb(new pg.Pool({ connectionString: url }));
+const db = await openDb(url);
 await db.exec("truncate cases, audit_log restart identity cascade");
 console.log("Demo database reset");
 await db.close();

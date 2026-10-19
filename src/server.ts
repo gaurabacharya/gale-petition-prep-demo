@@ -3,10 +3,10 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { existsSync } from "node:fs";
 import { Hono } from "hono";
 import { Effect, Layer } from "effect";
-import pg from "pg";
 import { makeApp } from "./api/app";
 import { AuditLogPg } from "./audit/audit";
-import { makePgDb } from "./db/pg";
+import { migrate } from "./db/migrate";
+import { openDb } from "./db/open";
 import { llmProviderFromEnv } from "./llm/config";
 import { makeLlmClientLayer } from "./llm/LlmClient";
 
@@ -19,7 +19,9 @@ if (!databaseUrl) {
 // Fail fast on a bad LLM_PROVIDER or a missing API key.
 const provider = await Effect.runPromise(llmProviderFromEnv(process.env));
 
-const db = makePgDb(new pg.Pool({ connectionString: databaseUrl }));
+const db = await openDb(databaseUrl);
+// PGlite has no separate migrate step to forget, so apply migrations on startup.
+if (databaseUrl.startsWith("pglite:")) await migrate(db, "migrations");
 const audit = AuditLogPg(db);
 const layer = Layer.merge(audit, makeLlmClientLayer(provider).pipe(Layer.provide(audit)));
 const demoMode = process.env.DEMO_MODE !== "false";

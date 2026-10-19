@@ -1,5 +1,4 @@
-import pg from "pg";
-import { makePgDb } from "./pg";
+import { openDb } from "./open";
 import { migrate } from "./migrate";
 
 const url = process.env.DATABASE_URL;
@@ -8,7 +7,7 @@ if (!url) {
   process.exit(1);
 }
 
-const db = makePgDb(new pg.Pool({ connectionString: url }));
+const db = await openDb(url);
 const ran = await migrate(db, "migrations");
 console.log(ran.length ? `Applied: ${ran.join(", ")}` : "Up to date");
 await db.close();
