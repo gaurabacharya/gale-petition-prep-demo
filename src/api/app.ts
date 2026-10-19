@@ -114,6 +114,8 @@ export function makeApp(deps: AppDeps): Hono {
     return c.json(await createCase(deps.db, parsed.right.label), 201);
   });
 
+  app.get("/status", (c) => c.json({ demoMode: deps.demoMode, model: deps.modelName }));
+
   app.get("/cases", async (c) => c.json(await listCases(deps.db)));
 
   app.get("/cases/:id", async (c) => {

@@ -2,7 +2,7 @@ import { FileText, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DEMO_CASE_LABEL } from "../../../src/demo/sampleDocs";
-import { createCase, listCases, uploadDemoDocuments, type CaseSummary } from "../api";
+import { createCase, listCases, type CaseSummary } from "../api";
 import { Button } from "../components/Button";
 import { StatusPill } from "../components/StatusPill";
 
@@ -35,13 +35,13 @@ export function ReviewQueue({ filter }: { filter: "all" | "queue" }) {
     navigate(`/case/${made.id}`);
   };
 
+  // Creates the demo case and opens it with the walkthrough, where the documents are added one by one.
   const fillDemo = async () => {
     setFilling(true);
     setError(undefined);
     try {
       const made = await createCase(DEMO_CASE_LABEL);
-      await uploadDemoDocuments(made.id);
-      navigate(`/case/${made.id}`);
+      navigate(`/case/${made.id}?demo=1`);
     } catch (e) {
       setError((e as Error).message);
       setFilling(false);
@@ -78,8 +78,8 @@ export function ReviewQueue({ filter }: { filter: "all" | "queue" }) {
             <Button variant="primary" type="submit" disabled={!label.trim()}>
               <Plus className="h-4 w-4" aria-hidden /> New case
             </Button>
-            <Button type="button" disabled={filling} onClick={() => void fillDemo()} title="Creates a case and uploads John Doe's synthetic passport, degree and offer letter">
-              <FileText className="h-4 w-4" aria-hidden /> {filling ? "Filling…" : "Fill in demo info"}
+            <Button type="button" disabled={filling} onClick={() => void fillDemo()} title="Creates a case and walks through adding John Doe's synthetic documents">
+              <FileText className="h-4 w-4" aria-hidden /> {filling ? "Creating…" : "Fill in demo info"}
             </Button>
           </form>
         )}

@@ -1,3 +1,4 @@
+import "../env";
 import { openDb } from "./open";
 import { migrate } from "./migrate";
 

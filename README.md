@@ -35,7 +35,7 @@ For UI development run `npm start` and `npm run dev:web` side by side (the Vite 
 
 | Variable | Purpose |
 | --- | --- |
-| `LLM_PROVIDER` | `anthropic` (default), `selfhosted` or `mock` |
+| `LLM_PROVIDER` | `anthropic` (default), `selfhosted`, `replay` or `mock` |
 | `ANTHROPIC_API_KEY` | Required for `anthropic` |
 | `ANTHROPIC_MODEL` | Optional model override (default `claude-sonnet-5-5`) |
 | `LLM_SERVER_URL` | Required for `selfhosted`: base URL of an OpenAI-compatible chat endpoint, such as vLLM |
@@ -44,11 +44,15 @@ For UI development run `npm start` and `npm run dev:web` side by side (the Vite 
 | `DATABASE_URL` | Postgres connection string, or `pglite:./.pglite` for embedded Postgres with nothing to install (`pglite:memory` forgets everything on exit) |
 | `PORT` | Server port (default 3000) |
 
+## Run the demo with no API key
+
+`LLM_PROVIDER=replay` plays back model answers that Claude wrote once for the John Doe documents (`src/demo/recorded.ts`), including the support letter. Only the model call is recorded; passport parsing, redaction, quote grading, the checks and the approval gate all run for real, and the UI banner says so. Documents other than John Doe's are refused with a clear message. Together with `DATABASE_URL=pglite:./.pglite` this runs anywhere Node does, which makes it the setting for a hosted demo that anyone can try. A sample of the finished outputs is in `docs/demo/output/`.
+
 ## Try it with the demo data
 
 The demo beneficiary is **John Doe**, a fictional person with synthetic documents in `samples/`: a specimen passport (country `UTO`), a degree and an offer letter from a fictional employer.
 
-**Fastest:** on the Cases page click **Fill in demo info**. It creates a "Doe H-1B" case, uploads all three documents and opens the review screen. On an open case the same button uploads whichever documents are still missing.
+**Guided:** on the Cases page click **Fill in demo info**. It creates a "Doe H-1B" case and opens a walkthrough. Drag each document onto the drop area (or press Add), watch the processing stages run (local passport parsing, redaction, model extraction, quote grading), and see its facts fade into the table. You can also drag a real file in from your desktop. On any open case the same button opens the walkthrough.
 
 **By hand:** create a case, then upload `samples/passport.txt`, `samples/degree.txt` and `samples/offer-letter.txt`.
 

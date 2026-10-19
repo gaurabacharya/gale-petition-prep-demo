@@ -1,0 +1,29 @@
+[DATE]
+
+[USCIS SERVICE CENTER]
+[SERVICE CENTER ADDRESS]
+
+Re: Form I-129, Petition for a Nonimmigrant Worker (H-1B)
+Beneficiary: John Doe
+Petitioner: Utopia Technologies Inc.
+Position: Software Engineer
+
+Dear Officer:
+
+Utopia Technologies Inc. submits this letter in support of its petition to employ John Doe as a Software Engineer in H-1B status beginning October 1, 2026. The position is a specialty occupation, and Mr. Doe holds the degree that the position requires.
+
+The position. Utopia Technologies Inc. is hiring a Software Engineer to work at 100 Main Street, Springfield, at an annual salary of $95,000. The duties are designing and building backend services. [DETAILED DUTIES AND PERCENTAGE OF TIME ON EACH]
+
+Why the position is a specialty occupation. Designing and building backend services requires theoretical and practical knowledge of how software systems are specified, structured, built and maintained. That knowledge is taught in a bachelor's program in computer science, and the work cannot be done competently without it. A bachelor's degree in computer science or a closely related field is therefore the normal minimum requirement for the position. [EVIDENCE OF INDUSTRY STANDARD, SUCH AS OCCUPATIONAL HANDBOOK CITATION OR COMPARABLE EMPLOYER POSTINGS]
+
+The beneficiary's qualifications. Mr. Doe holds a Bachelor of Science in Computer Science from Utopia University, conferred on May 20, 2012. His field of study is the very field in which the duties of the position fall, so the degree relates directly to the work. Courses in computer science give the foundation for the design and construction of backend services. [RELEVANT COURSEWORK AND WORK EXPERIENCE, IF ANY]
+
+The offered wage. The petitioner will pay $95,000 per year. [PREVAILING WAGE LEVEL FOR THE OCCUPATION AND AREA, AND LCA CERTIFICATION NUMBER]
+
+Conclusion. The position of Software Engineer requires the application of specialized knowledge in computer science, and Mr. Doe's Bachelor of Science in Computer Science is the degree that knowledge calls for. We respectfully ask that the petition be approved. [ADDITIONAL EXHIBITS TO LIST]
+
+Sincerely,
+
+[SIGNATORY NAME]
+[SIGNATORY TITLE]
+Utopia Technologies Inc.

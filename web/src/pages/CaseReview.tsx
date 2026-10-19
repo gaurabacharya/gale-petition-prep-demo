@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   getCase,
   generateDataSheet,
   generateLetter,
   getChecks,
   patchField,
-  uploadDemoDocuments,
   uploadDocument,
   type CaseDetail,
   type CaseSummary,
@@ -14,6 +13,7 @@ import {
   type DocKind,
 } from "../api";
 import { Button } from "../components/Button";
+import { DemoWalkthrough } from "../components/DemoWalkthrough";
 import { ChecksCard } from "../components/ChecksCard";
 import { FactRow } from "../components/FactRow";
 import { LetterPanel } from "../components/LetterPanel";
@@ -39,6 +39,9 @@ export function CaseReview() {
   const [detail, setDetail] = useState<CaseDetail | undefined>();
   const [checks, setChecks] = useState<Check[]>([]);
   const [error, setError] = useState<string | undefined>();
+  const [params] = useSearchParams();
+  const [showDemo, setShowDemo] = useState(params.get("demo") === "1");
+  const [fresh, setFresh] = useState<Record<string, number>>({});
   const [letter, setLetter] = useState<{ body: string; model: string } | undefined>();
 
   // One refetch path for every change and upload, so approvals and checks never go stale.
@@ -48,8 +51,10 @@ export function CaseReview() {
       setDetail(d);
       setChecks(c.checks);
       setError(undefined);
+      return d;
     } catch (e) {
       setError((e as Error).message);
+      return undefined;
     }
   }, [id]);
 
@@ -65,6 +70,15 @@ export function CaseReview() {
       return;
     }
     await refresh();
+  };
+
+  // Upload for the walkthrough, then fade in just the facts that arrived, one after another.
+  const uploadAndReveal = async (kind: DocKind, file: File) => {
+    const before = new Set((detail?.fields ?? []).map((f) => f.id));
+    await uploadDocument(id, kind, file);
+    const d = await refresh();
+    const arrived = (d?.fields ?? []).filter((f) => !before.has(f.id));
+    setFresh(Object.fromEntries(arrived.map((f, i) => [f.id, i * 120])));
   };
 
   const output = async (fn: () => Promise<unknown>) => {
@@ -112,11 +126,7 @@ export function CaseReview() {
       )}
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <Button
-          disabled={KINDS.every((k) => detail.documents.some((d) => d.kind === k))}
-          onClick={() => void change(() => uploadDemoDocuments(id, KINDS.filter((k) => !detail.documents.some((d) => d.kind === k))))}
-          title="Uploads John Doe's synthetic documents for any kind not yet uploaded"
-        >
+        <Button onClick={() => setShowDemo((v) => !v)} aria-pressed={showDemo}>
           Fill in demo info
         </Button>
         {KINDS.map((kind) => (
@@ -137,6 +147,10 @@ export function CaseReview() {
         ))}
       </div>
 
+      {showDemo && (
+        <DemoWalkthrough uploaded={detail.documents.map((d) => d.kind)} onUpload={uploadAndReveal} />
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
         <div className="overflow-hidden rounded-lg border border-slate-200">
           <table className="w-full table-fixed text-left text-sm">
@@ -154,6 +168,7 @@ export function CaseReview() {
                 <FactRow
                   key={f.id}
                   field={f}
+                  revealDelay={fresh[f.id]}
                   answer={detail.answers[`${f.docKind}.${f.name}`]}
                   level={fieldLevel(f, checks)}
                   onSave={(value) => change(() => patchField(f.id, { value }))}

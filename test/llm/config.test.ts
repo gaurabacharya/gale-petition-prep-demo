@@ -38,6 +38,6 @@ describe("llmProviderFromEnv", () => {
 
   it("rejects an unknown provider and lists the valid ones", async () => {
     const result = await resolve({ LLM_PROVIDER: "gpt" });
-    expect(result._tag === "Left" && result.left.message).toContain("anthropic, selfhosted or mock");
+    expect(result._tag === "Left" && result.left.message).toContain("anthropic, selfhosted, replay or mock");
   });
 });

@@ -7,6 +7,9 @@ import { StatusPill } from "../../web/src/components/StatusPill";
 
 vi.mock("../../web/src/api", () => ({ listCases: vi.fn().mockResolvedValue([]) }));
 
+// The banner asks /status which provider is running; offline falls back to the default banner.
+vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
 describe("shell", () => {
   it("shows the brand and nav links", () => {
     render(

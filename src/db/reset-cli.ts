@@ -1,3 +1,4 @@
+import "../env";
 import { openDb } from "./open";
 
 // Wipes every case, document, field, letter and audit row so a recording starts from a known state.

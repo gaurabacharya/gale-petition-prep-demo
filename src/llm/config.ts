@@ -4,6 +4,7 @@ import type { AuditLog } from "../audit/audit";
 import { makeAnthropicProvider } from "./anthropic";
 import { LlmClient, makeLlmClientLayer, type LlmProvider } from "./LlmClient";
 import { makeMockProvider } from "./mock";
+import { makeReplayProvider } from "./replay";
 import { makeSelfHostedProvider } from "./selfhosted";
 
 export class LlmConfigError extends Data.TaggedError("LlmConfigError")<{
@@ -29,10 +30,12 @@ export function llmProviderFromEnv(env: Env): Effect.Effect<LlmProvider, LlmConf
       }
       return Effect.succeed(makeSelfHostedProvider({ url, model: env.LLM_MODEL }));
     }
+    case "replay":
+      return Effect.succeed(makeReplayProvider());
     case "mock":
       return Effect.succeed(makeMockProvider().provider);
     default:
-      return Effect.fail(new LlmConfigError({ message: `Unknown LLM_PROVIDER "${choice}". Expected anthropic, selfhosted or mock.` }));
+      return Effect.fail(new LlmConfigError({ message: `Unknown LLM_PROVIDER "${choice}". Expected anthropic, selfhosted, replay or mock.` }));
   }
 }
 

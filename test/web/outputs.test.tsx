@@ -56,6 +56,9 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
 });
 
+// The banner asks /status which provider is running; offline falls back to the default banner.
+vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
 describe("outputs on the case review screen", () => {
   it("keeps both buttons disabled while a field is pending", async () => {
     open(["approved", "pending"]);

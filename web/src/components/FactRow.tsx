@@ -11,17 +11,21 @@ interface Props {
   onSave: (value: string) => Promise<void>;
   onApprove: () => Promise<void>;
   onUseAnswer: (answer: string) => Promise<void>;
+  /** Set on rows that just arrived from an upload: they fade in after this many milliseconds. */
+  revealDelay?: number;
 }
 
-export function FactRow({ field, answer, level, onSave, onApprove, onUseAnswer }: Props) {
+export function FactRow({ field, answer, level, onSave, onApprove, onUseAnswer, revealDelay }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(field.value);
   const approved = field.status === "approved";
 
   return (
     <tr
+      style={revealDelay === undefined ? undefined : { animationDelay: `${revealDelay}ms` }}
       className={cn(
         "align-top",
+        revealDelay !== undefined && "fact-in",
         level === "problem" && "bg-red-50 text-red-900",
         level === "warning" && "bg-amber-50",
       )}

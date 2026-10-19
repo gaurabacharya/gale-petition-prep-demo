@@ -8,5 +8,5 @@ export default defineConfig({
   root: "web",
   plugins: [react(), tailwindcss()],
   build: { outDir: "dist", emptyOutDir: true },
-  server: { proxy: { "/cases": api, "/fields": api } },
+  server: { proxy: { "/cases": api, "/fields": api, "/status": api } },
 });

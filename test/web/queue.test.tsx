@@ -1,15 +1,19 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CaseSummary } from "../../web/src/api";
 import { ReviewQueue } from "../../web/src/pages/ReviewQueue";
 
 const listCases = vi.hoisted(() => vi.fn());
 const createCase = vi.hoisted(() => vi.fn());
-const uploadDemoDocuments = vi.hoisted(() => vi.fn());
-vi.mock("../../web/src/api", () => ({ listCases, createCase, uploadDemoDocuments }));
+vi.mock("../../web/src/api", () => ({ listCases, createCase }));
 afterEach(cleanup);
+
+const LocationProbe = () => {
+  const l = useLocation();
+  return <p>{l.pathname + l.search}</p>;
+};
 
 const row = (over: Partial<CaseSummary> = {}): CaseSummary => ({
   id: "c1",
@@ -73,22 +77,27 @@ describe("ReviewQueue", () => {
     expect(await screen.findByText("READY PERSON")).toBeTruthy();
   });
 
-  it("Fill in demo info creates the Doe case and uploads the demo documents", async () => {
+  it("Fill in demo info creates the Doe case and opens it in walkthrough mode", async () => {
     listCases.mockResolvedValue([]);
     createCase.mockResolvedValue({ id: "new1", label: "Doe H-1B" });
-    uploadDemoDocuments.mockResolvedValue(undefined);
-    await show("all");
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<ReviewQueue filter="all" />} />
+          <Route path="/case/:id" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
     fireEvent.click(await screen.findByRole("button", { name: /Fill in demo info/ }));
-    await waitFor(() => expect(uploadDemoDocuments).toHaveBeenCalledWith("new1"));
+    expect(await screen.findByText("/case/new1?demo=1")).toBeTruthy();
     expect(createCase).toHaveBeenCalledWith("Doe H-1B");
   });
 
-  it("shows the error when filling in demo info fails", async () => {
+  it("shows the error when creating the demo case fails", async () => {
     listCases.mockResolvedValue([]);
-    createCase.mockResolvedValue({ id: "new2", label: "Doe H-1B" });
-    uploadDemoDocuments.mockRejectedValue(new Error("model unavailable"));
+    createCase.mockRejectedValue(new Error("database unavailable"));
     await show("all");
     fireEvent.click(await screen.findByRole("button", { name: /Fill in demo info/ }));
-    await screen.findByText("model unavailable");
+    await screen.findByText("database unavailable");
   });
 });

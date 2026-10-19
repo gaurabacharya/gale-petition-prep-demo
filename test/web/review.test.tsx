@@ -11,7 +11,6 @@ const api = vi.hoisted(() => ({
   getChecks: vi.fn(),
   patchField: vi.fn(),
   uploadDocument: vi.fn(),
-  uploadDemoDocuments: vi.fn(),
 }));
 vi.mock("../../web/src/api", () => api);
 afterEach(cleanup);
@@ -133,9 +132,30 @@ describe("CaseReview", () => {
     expect((screen.getByRole("button", { name: "Generate petition data" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("Fill in demo info uploads only the documents that are missing", async () => {
+  it("Fill in demo info opens the walkthrough, and Add processes one document at a time", async () => {
+    api.uploadDocument.mockClear();
+    await show();
+    expect(screen.queryByLabelText("Demo walkthrough")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Fill in demo info" }));
+    expect(screen.getByLabelText("Demo walkthrough")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add Passport" }));
+    await screen.findByText(/Processing passport/);
+    expect(screen.getByText("Parsing the machine-readable zone locally")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Add Degree" }) as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect(api.uploadDocument).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    expect(api.uploadDocument.mock.calls[0][1]).toBe("passport");
+    await waitFor(() => expect(screen.queryByText(/Processing passport/)).toBeNull(), { timeout: 5000 });
+  }, 10000);
+
+  it("accepts a sample document dragged onto the drop area", async () => {
+    api.uploadDocument.mockClear();
     await show();
     fireEvent.click(screen.getByRole("button", { name: "Fill in demo info" }));
-    await waitFor(() => expect(api.uploadDemoDocuments).toHaveBeenCalledWith("c1", ["passport", "degree"]));
-  });
+    fireEvent.drop(screen.getByTestId("drop-zone"), {
+      dataTransfer: { getData: () => "degree", files: [] },
+    });
+    await waitFor(() => expect(api.uploadDocument).toHaveBeenCalledTimes(1), { timeout: 6000 });
+    expect(api.uploadDocument.mock.calls[0][1]).toBe("degree");
+    expect(api.uploadDocument.mock.calls[0][2].name).toBe("degree.txt");
+  }, 10000);
 });
