@@ -79,7 +79,7 @@ export function AddDocumentsDialog({ uploaded, onUpload, onClose, stageMs = 700 
   const addSample = async (kind: DocKind) => {
     const d = DEMO_DOCUMENTS.find((x) => x.kind === kind)!;
     try {
-      const res = await fetch(`/samples/${d.filename}`);
+      const res = await fetch(`${import.meta.env.BASE_URL}samples/${d.filename}`);
       if (!res.ok) throw new Error(`Could not load ${d.filename}`);
       await process(kind, new File([await res.blob()], d.filename, { type: d.mime }));
     } catch (e) {
@@ -210,7 +210,7 @@ export function AddDocumentsDialog({ uploaded, onUpload, onClose, stageMs = 700 
       {viewing && (
         <DocumentPreview
           title={TITLES[viewing]}
-          src={`/samples/${DEMO_DOCUMENTS.find((d) => d.kind === viewing)!.filename}`}
+          src={`${import.meta.env.BASE_URL}samples/${DEMO_DOCUMENTS.find((d) => d.kind === viewing)!.filename}`}
           mime={DEMO_DOCUMENTS.find((d) => d.kind === viewing)!.mime}
           onClose={() => setViewing(undefined)}
         />

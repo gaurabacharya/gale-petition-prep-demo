@@ -18,6 +18,7 @@
   ],
   "exclude": [
     "web",
-    "test/web"
+    "test/web",
+    "src/browser"
   ]
 }

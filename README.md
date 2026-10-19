@@ -6,6 +6,8 @@ Petition Prep turns an employee's passport, degree and offer letter into attorne
 
 For this demo I'm using Claude with fake data. In a real workflow, client documents would go to a local model running on our own servers, and the code is already built so that's a config switch.
 
+**Try it:** https://gaurabacharya.github.io/gale-petition-prep-demo/ (runs entirely in your browser; see [In-browser demo](#in-browser-demo)).
+
 ## How it works
 
 1. **Upload** a passport, a degree and an offer letter to a case.
@@ -101,3 +103,22 @@ The self-hosted provider is implemented and tested against a fake local server, 
 ## Out of scope
 
 Filling the official I-129 PDF, OCR for scans, prevailing wage lookup, and multi-firm use. Filing with USCIS directly is not planned.
+
+## In-browser demo
+
+The GitHub Pages site runs the whole app in the visitor's browser, with no server:
+
+- **Same API code.** `src/browser/inPageApi.ts` builds the same Hono app the Node server uses (`src/api/app.ts`) and answers the UI's `/cases`, `/fields` and `/status` requests inside the page (`src/browser/fetchRoute.ts`). The UI code is unchanged.
+- **Database in the browser.** PGlite stores each visitor's cases in IndexedDB, so they survive a reload and are never shared. "Reset demo" in the nav empties them.
+- **Replay answers.** The model calls use the recorded John Doe answers (`LLM_PROVIDER=replay`), so there is no API key and no model call.
+- **Local OCR.** The passport scan is read with tesseract.js in the browser (`src/browser/ocr.ts`). The OCR worker, engine and English model are copied into the site, so nothing loads from a CDN.
+
+Build and preview it locally:
+
+```bash
+npm run build:pages     # writes web/dist-pages
+npm run preview:pages   # http://localhost:4173/gale-petition-prep-demo/
+```
+
+`.github/workflows/pages.yml` runs the type check, the tests and `build:pages` on every push to `main`, then publishes to GitHub Pages. One-time setup: in the repo's Settings → Pages, set Source to **GitHub Actions**.
+

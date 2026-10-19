@@ -11,5 +11,5 @@
     "noEmit": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "../test/web", "../src/checks", "../src/repo/cases.ts", "../src/db/fields.ts"]
+  "include": ["src", "../test/web", "../src/checks", "../src/repo/cases.ts", "../src/db/fields.ts", "../src/browser"]
 }
