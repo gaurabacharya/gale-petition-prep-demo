@@ -11,6 +11,11 @@ const api = vi.hoisted(() => ({
   getChecks: vi.fn(),
   patchField: vi.fn(),
   uploadDocument: vi.fn(),
+  generateDataSheet: vi.fn(),
+  generateLetter: vi.fn(),
+  getLetter: vi.fn(),
+  saveLetter: vi.fn(),
+  letterPdf: vi.fn(),
 }));
 vi.mock("../../web/src/api", () => api);
 afterEach(cleanup);
@@ -90,13 +95,77 @@ describe("CaseReview", () => {
     expect(screen.getByText("Compare the salary to the prevailing wage.")).toBeTruthy();
   });
 
-  it("marks an edit as attorney-sourced and pending", async () => {
+  it("saves an edit with Save & accept, marking it attorney-sourced and approved", async () => {
     await show();
     fireEvent.click(within(rowOf("job_title")).getByRole("button", { name: "Edit job_title" }));
     fireEvent.change(screen.getByLabelText("Value for job_title"), { target: { value: "Senior Engineer" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(api.patchField).toHaveBeenCalledWith("job_title", { value: "Senior Engineer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save & accept" }));
+    await waitFor(() =>
+      expect(api.patchField).toHaveBeenCalledWith("job_title", { value: "Senior Engineer", status: "approved" }),
+    );
     await waitFor(() => expect(within(rowOf("job_title")).getByText("attorney")).toBeTruthy());
+    expect(within(rowOf("job_title")).getByText("Approved")).toBeTruthy();
+  });
+
+  it("saves an edit with Enter and cancels with Escape", async () => {
+    api.patchField.mockClear();
+    await show();
+    fireEvent.click(within(rowOf("employer")).getByRole("button", { name: "Edit employer" }));
+    fireEvent.keyDown(screen.getByLabelText("Value for employer"), { key: "Escape" });
+    expect(screen.queryByLabelText("Value for employer")).toBeNull();
+    expect(api.patchField).not.toHaveBeenCalled();
+    fireEvent.click(within(rowOf("employer")).getByRole("button", { name: "Edit employer" }));
+    const input = screen.getByLabelText("Value for employer");
+    fireEvent.change(input, { target: { value: "Utopia Inc." } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(api.patchField).toHaveBeenCalledWith("employer", { value: "Utopia Inc.", status: "approved" }));
+    await waitFor(() => expect(screen.queryByLabelText("Value for employer")).toBeNull());
+  });
+
+  it("disables Accept while its request is saving", async () => {
+    let release!: () => void;
+    const original = api.patchField.getMockImplementation()!;
+    api.patchField.mockImplementationOnce(async (...args: Parameters<typeof original>) => {
+      await new Promise<void>((r) => (release = r));
+      return original(...args);
+    });
+    await show();
+    fireEvent.click(within(rowOf("employer")).getByRole("button", { name: "Accept document value for employer" }));
+    const busy = within(rowOf("employer")).getByRole("button", { name: "Accept document value for employer" }) as HTMLButtonElement;
+    expect(busy.disabled).toBe(true);
+    expect(busy.textContent).toBe("Saving…");
+    release();
+    await waitFor(() => expect(within(rowOf("employer")).getByText("Approved")).toBeTruthy());
+  });
+
+  it("shows the questionnaire side as Accepted once the matching value is approved", async () => {
+    store.fields = store.fields.map((x) =>
+      x.name === "job_title" ? { ...x, value: "Software Engineer", status: "approved" as const } : x,
+    );
+    await show();
+    expect(within(rowOf("job_title")).getByText("Accepted")).toBeTruthy();
+    expect(within(rowOf("job_title")).queryByRole("button", { name: "Accept questionnaire answer for job_title" })).toBeNull();
+  });
+
+  it("explains an approved row that still has a warning or a problem", async () => {
+    store.fields = store.fields.map((x) => ({ ...x, status: "approved" as const }));
+    store.checks = [
+      ...store.checks,
+      { id: "w", level: "warning", message: "Employer warning.", fieldRefs: [{ docKind: "offer_letter", name: "employer" }] },
+    ];
+    await show();
+    expect(within(rowOf("employer")).getByText("Reviewed with warning")).toBeTruthy();
+    expect(rowOf("employer").className).not.toContain("bg-amber-50");
+    expect(within(rowOf("annual_salary")).getByText(/check still fails/)).toBeTruthy();
+  });
+
+  it("keeps the row order when an accept clears a check", async () => {
+    await show();
+    const before = screen.getAllByTestId("fact-name").map((n) => n.textContent);
+    store.checks = store.checks.filter((c) => c.level !== "problem");
+    fireEvent.click(within(rowOf("annual_salary")).getByRole("button", { name: "Accept document value for annual_salary" }));
+    await waitFor(() => expect(within(rowOf("annual_salary")).getByText("Approved")).toBeTruthy());
+    expect(screen.getAllByTestId("fact-name").map((n) => n.textContent)).toEqual(before);
   });
 
   it("approves a field with Accept", async () => {
@@ -113,15 +182,24 @@ describe("CaseReview", () => {
     );
   });
 
-  it("unlocks Generate petition data only when every field is approved", async () => {
+  it("shows Ready to file only once every field is approved and no problem remains", async () => {
+    api.generateDataSheet.mockResolvedValue(new Blob(["%PDF"]));
+    api.getLetter.mockResolvedValue(undefined);
+    URL.createObjectURL = vi.fn(() => "about:blank");
+    URL.revokeObjectURL = vi.fn();
     await show();
-    const button = screen.getByRole("button", { name: "Generate petition data" }) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Ready to file" })).toBeNull();
     for (const name of ["employer", "job_title", "annual_salary"]) {
       fireEvent.click(within(rowOf(name)).getByRole("button", { name: `Accept document value for ${name}` }));
       await waitFor(() => expect(within(rowOf(name)).getByText("Approved")).toBeTruthy());
     }
-    await waitFor(() => expect(button.disabled).toBe(false));
+    // The salary problem still blocks outputs.
+    expect(screen.queryByRole("region", { name: "Ready to file" })).toBeNull();
+    fireEvent.click(within(rowOf("annual_salary")).getByRole("button", { name: "Edit annual_salary" }));
+    fireEvent.change(screen.getByLabelText("Value for annual_salary"), { target: { value: "$95,000" } });
+    store.checks = store.checks.filter((c) => c.level !== "problem");
+    fireEvent.click(screen.getByRole("button", { name: "Save & accept" }));
+    expect(await screen.findByRole("region", { name: "Ready to file" })).toBeTruthy();
   });
 
   it("re-fetches after an upload so approvals reset", async () => {
@@ -134,7 +212,7 @@ describe("CaseReview", () => {
     });
     await waitFor(() => expect(api.getCase.mock.calls.length).toBeGreaterThan(before));
     await waitFor(() => expect(within(rowOf("employer")).queryByText("Approved")).toBeNull());
-    expect((screen.getByRole("button", { name: "Generate petition data" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Ready to file" })).toBeNull();
   });
 
   const open = async (path = "/case/c1") => {

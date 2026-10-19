@@ -203,6 +203,12 @@ export async function saveLetter(db: Db, caseId: string, body: string, model: st
   );
 }
 
+export async function getLetter(db: Db, caseId: string): Promise<{ body: string; model: string } | undefined> {
+  if (!isUuid(caseId)) return undefined;
+  const { rows } = await db.query<{ body: string; model: string }>("select body, model from letters where case_id = $1", [caseId]);
+  return rows[0];
+}
+
 export async function getCaseChecks(
   db: Db,
   id: string,

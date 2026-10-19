@@ -5,10 +5,20 @@ import { AuditLog } from "../audit/audit";
 import type { Db } from "../db/db";
 import type { LlmClient } from "../llm/LlmClient";
 import { extractAndStore, type ExtractionError } from "../pipeline/extract";
-import { caseExists, createCase, getCaseChecks, getCaseDetail, listCases, updateField } from "../repo/cases";
+import {
+  caseExists,
+  createCase,
+  getCaseChecks,
+  getCaseDetail,
+  getLetter,
+  listCases,
+  saveLetter,
+  updateField,
+} from "../repo/cases";
 import { checkOutputGate } from "../outputs/gate";
 import { buildDataSheet } from "../outputs/dataSheet";
 import { generateLetter } from "../outputs/letter";
+import { buildLetterPdf } from "../outputs/letterPdf";
 import { ocrToText } from "./ocr";
 import { pdfToText } from "./pdf";
 
@@ -30,6 +40,8 @@ const UploadBody = Schema.Struct({
   filename: Schema.NonEmptyString,
   text: Schema.String,
 });
+const LetterBody = Schema.Struct({ body: Schema.NonEmptyString });
+const MAX_LETTER_CHARS = 50_000;
 const PatchField = Schema.Struct({
   value: Schema.optional(Schema.String),
   status: Schema.optional(Schema.Literal("pending", "approved")),
@@ -179,6 +191,53 @@ export function makeApp(deps: AppDeps): Hono {
     );
     if (Either.isLeft(result)) return c.json({ error: result.left.message }, 502);
     return c.json(result.right);
+  });
+
+  // Reads the edited letter text from the request; undefined means the body is missing or unusable.
+  const readLetterBody = async (c: Context): Promise<string | undefined> => {
+    const parsed = Schema.decodeUnknownEither(LetterBody)(await readJson(c));
+    if (Either.isLeft(parsed)) return undefined;
+    const { body } = parsed.right;
+    return hasNul(body) || body.length > MAX_LETTER_CHARS ? undefined : body;
+  };
+
+  app.get("/cases/:id/letter", async (c) => {
+    const gate = await checkOutputGate(deps.db, c.req.param("id"));
+    if (!gate) return notFound(c);
+    if ("blocked" in gate) return c.json({ error: gate.blocked.message }, 409);
+    const letter = await getLetter(deps.db, c.req.param("id"));
+    return letter ? c.json(letter) : notFound(c);
+  });
+
+  app.put("/cases/:id/letter", async (c) => {
+    const caseId = c.req.param("id");
+    const gate = await checkOutputGate(deps.db, caseId);
+    if (!gate) return notFound(c);
+    if ("blocked" in gate) return c.json({ error: gate.blocked.message }, 409);
+    const body = await readLetterBody(c);
+    if (body === undefined) return badRequest(c, "Provide the letter text as body");
+    const existing = await getLetter(deps.db, caseId);
+    const model = existing?.model ?? "attorney";
+    await saveLetter(deps.db, caseId, body, model);
+    return c.json({ body, model });
+  });
+
+  app.post("/cases/:id/letter/pdf", async (c) => {
+    const gate = await checkOutputGate(deps.db, c.req.param("id"));
+    if (!gate) return notFound(c);
+    if ("blocked" in gate) return c.json({ error: gate.blocked.message }, 409);
+    const body = await readLetterBody(c);
+    if (body === undefined) return badRequest(c, "Provide the letter text as body");
+    const bytes = await buildLetterPdf({ body });
+    await Effect.runPromise(
+      Effect.flatMap(AuditLog, (audit) => audit.record("output_generated", { counts: { letter_pdf: 1 } })).pipe(
+        Effect.provide(deps.layer),
+      ),
+    );
+    const label = gate.detail.label.replace(/[^A-Za-z0-9_-]+/g, "-") || "case";
+    return new Response(new Uint8Array(bytes), {
+      headers: { "content-type": "application/pdf", "content-disposition": `inline; filename="support-letter-${label}.pdf"` },
+    });
   });
 
   const uploadLimit = bodyLimit({

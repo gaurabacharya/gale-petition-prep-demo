@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import type { DocKind } from "../db/fields";
 import type { FieldRow } from "../repo/cases";
+import { winAnsiSafe, wrap } from "./pdfText";
 
 interface SheetFact {
   readonly docKind: DocKind;
@@ -52,36 +53,6 @@ export const SHEET_SECTIONS: readonly { title: string; fields: readonly SheetFac
 
 const PAGE = { width: 612, height: 792, margin: 54 };
 const LABEL_WIDTH = 150;
-
-/** The standard fonts cover WinAnsi only: replace anything else with "?" rather than fail. */
-function winAnsiSafe(text: string, font: PDFFont): string {
-  let out = "";
-  for (const ch of text.replace(/\s+/g, " ")) {
-    try {
-      font.encodeText(ch);
-      out += ch;
-    } catch {
-      out += "?";
-    }
-  }
-  return out;
-}
-
-function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
-  const lines: string[] = [];
-  let line = "";
-  for (const word of text.split(" ")) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (line && font.widthOfTextAtSize(candidate, size) > maxWidth) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = candidate;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
 
 /** Built only from the approved rows it is given. No model call. */
 export async function buildDataSheet(input: {

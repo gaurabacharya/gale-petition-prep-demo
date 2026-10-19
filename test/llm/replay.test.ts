@@ -40,4 +40,11 @@ describe("replay provider", () => {
     expect(good._tag === "Right" && good.right).toContain("Software Engineer");
     expect((await generate(ok.replace("John Doe", "Jane Roe")))._tag).toBe("Left");
   });
+
+  it("returns the letter with the full name when the attorney approved John Michael Doe", async () => {
+    const generate = (prompt: string) => Effect.runPromise(makeReplayProvider().generate({ system: "", prompt }).pipe(Effect.either));
+    const full = await generate(buildLetterPrompt({ ...buildLetterFacts([]), beneficiary_name: "John Michael Doe" }));
+    expect(full._tag === "Right" && full.right).toContain("employ John Michael Doe");
+    expect(full._tag === "Right" && full.right).not.toMatch(/John Doe/);
+  });
 });

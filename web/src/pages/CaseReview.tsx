@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
   getCase,
-  generateDataSheet,
-  generateLetter,
   getChecks,
   patchField,
   uploadDocument,
@@ -16,17 +14,17 @@ import { Button } from "../components/Button";
 import { AddDocumentsDialog } from "../components/AddDocumentsDialog";
 import { ChecksCard } from "../components/ChecksCard";
 import { FactRow } from "../components/FactRow";
-import { LetterPanel } from "../components/LetterPanel";
+import { OutputsPanel } from "../components/OutputsPanel";
 import { StatusPill } from "../components/StatusPill";
-import { downloadBlob } from "../lib/download";
 import { fieldLevel, sortFacts } from "../lib/sortFacts";
 
 const KINDS: DocKind[] = ["passport", "degree", "offer_letter"];
 
 function statusOf(detail: CaseDetail, checks: readonly Check[]): CaseSummary["status"] {
   if (detail.fields.length === 0) return "empty";
-  if (detail.fields.every((f) => f.status === "approved") && detail.documents.length >= 3) return "ready";
-  return checks.some((c) => c.level === "problem") ? "discrepancy" : "needs_review";
+  const problems = checks.some((c) => c.level === "problem");
+  if (detail.fields.every((f) => f.status === "approved") && !problems && detail.documents.length >= 3) return "ready";
+  return problems ? "discrepancy" : "needs_review";
 }
 
 function titleOf(detail: CaseDetail): string {
@@ -42,7 +40,9 @@ export function CaseReview() {
   const [params] = useSearchParams();
   const [adding, setAdding] = useState(params.get("new") === "1");
   const [fresh, setFresh] = useState<Record<string, number>>({});
-  const [letter, setLetter] = useState<{ body: string; model: string } | undefined>();
+  // Row order is fixed while reviewing, so accepting a fact never slides another row under the cursor.
+  // It is recomputed only when the set of facts changes (an upload).
+  const order = useRef<{ key: string; ids: string[] }>({ key: "", ids: [] });
 
   // One refetch path for every change and upload, so approvals and checks never go stale.
   const refresh = useCallback(async () => {
@@ -62,14 +62,16 @@ export function CaseReview() {
     void refresh();
   }, [refresh]);
 
-  const change = async (fn: () => Promise<unknown>) => {
+  // Resolves true when the change saved. The row awaits this, so its button stays busy until the refetch lands.
+  const change = async (fn: () => Promise<unknown>): Promise<boolean> => {
     try {
       await fn();
     } catch (e) {
       setError((e as Error).message);
-      return;
+      return false;
     }
     await refresh();
+    return true;
   };
 
   // Upload for the walkthrough, then fade in just the facts that arrived, one after another.
@@ -81,20 +83,16 @@ export function CaseReview() {
     setFresh(Object.fromEntries(arrived.map((f, i) => [f.id, i * 120])));
   };
 
-  const output = async (fn: () => Promise<unknown>) => {
-    try {
-      await fn();
-      setError(undefined);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-
   if (!detail) return <p className="text-sm text-slate-500">{error ?? "Loading…"}</p>;
 
   const status = statusOf(detail, checks);
-  const allApproved = detail.fields.length > 0 && detail.fields.every((f) => f.status === "approved");
-  const facts = sortFacts(detail.fields, checks);
+  const pending = detail.fields.filter((f) => f.status !== "approved").length;
+  const problems = checks.filter((c) => c.level === "problem").length;
+  const canGenerate = detail.fields.length > 0 && pending === 0 && problems === 0;
+  const key = detail.fields.map((f) => f.id).sort().join(",");
+  if (order.current.key !== key) order.current = { key, ids: sortFacts(detail.fields, checks).map((f) => f.id) };
+  const rank = new Map(order.current.ids.map((fid, i) => [fid, i]));
+  const facts = [...detail.fields].sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
 
   return (
     <div>
@@ -108,22 +106,21 @@ export function CaseReview() {
             Review each fact against its source, then accept it. Questionnaire answers are demo data.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button disabled={!allApproved} onClick={() => void output(async () => setLetter(await generateLetter(id)))}>
-            Draft support letter
-          </Button>
-          <Button variant="primary" disabled={!allApproved} onClick={() => void output(async () => downloadBlob(await generateDataSheet(id), "petition-data.pdf"))}>
-            Generate petition data
-          </Button>
-        </div>
+        {!canGenerate && detail.fields.length > 0 && (
+          <p className="shrink-0 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-600" data-testid="not-ready">
+            Not ready yet:{" "}
+            {[
+              pending > 0 && `${pending} fact${pending === 1 ? "" : "s"} to accept`,
+              problems > 0 && `${problems} problem${problems === 1 ? "" : "s"} to fix`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
       </div>
 
       {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
-      {status === "ready" && (
-        <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
-          Every fact is approved. This case is ready to file.
-        </p>
-      )}
+      {canGenerate && <OutputsPanel caseId={id} label={detail.label} factCount={detail.fields.length} />}
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <Button onClick={() => setAdding(true)}>Add documents</Button>
@@ -173,9 +170,9 @@ export function CaseReview() {
                   revealDelay={fresh[f.id]}
                   answer={detail.answers[`${f.docKind}.${f.name}`]}
                   level={fieldLevel(f, checks)}
-                  onSave={(value) => change(() => patchField(f.id, { value }))}
-                  onApprove={() => change(() => patchField(f.id, { status: "approved" }))}
-                  onUseAnswer={(value) => change(() => patchField(f.id, { value, status: "approved" }))}
+                  onSave={(value) => change(() => patchField(f.id, { value, status: "approved" }))}
+                  onApprove={async () => void (await change(() => patchField(f.id, { status: "approved" })))}
+                  onUseAnswer={async (value) => void (await change(() => patchField(f.id, { value, status: "approved" })))}
                 />
               ))}
             </tbody>
@@ -183,9 +180,6 @@ export function CaseReview() {
         </div>
         <ChecksCard checks={checks} />
       </div>
-      {letter && (
-        <LetterPanel body={letter.body} model={letter.model} onChange={(body) => setLetter({ ...letter, body })} />
-      )}
     </div>
   );
 }

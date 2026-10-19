@@ -75,3 +75,58 @@ describe("POST /cases/:id/letter", () => {
     expect((await post("/cases/00000000-0000-0000-0000-000000000000/letter")).status).toBe(404);
   });
 });
+
+describe("letter draft routes", () => {
+  function app() {
+    const llm = makeTestLlm(() => ({ body: "Dear Officer, ..." }));
+    const a = makeApp({ db, layer: llm.layer, demoMode: true, modelName: "mock" });
+    const send = (method: string, path: string, body?: unknown) =>
+      a.request(path, {
+        method,
+        headers: { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    return { send, llm };
+  }
+
+  it("returns 404 from GET before any draft exists", async () => {
+    const { send } = app();
+    const id = await seedCase(db, { approve: true });
+    expect((await send("GET", `/cases/${id}/letter`)).status).toBe(404);
+  });
+
+  it("saves an edited draft with PUT and returns it from GET, keeping the model name", async () => {
+    const { send } = app();
+    const id = await seedCase(db, { approve: true });
+    await send("POST", `/cases/${id}/letter`);
+    const put = await send("PUT", `/cases/${id}/letter`, { body: "Edited letter" });
+    expect(put.status).toBe(200);
+    expect(await (await send("GET", `/cases/${id}/letter`)).json()).toEqual({ body: "Edited letter", model: "mock" });
+  });
+
+  it("rejects a blank body or one with binary data", async () => {
+    const { send } = app();
+    const id = await seedCase(db, { approve: true });
+    expect((await send("PUT", `/cases/${id}/letter`, { body: "" })).status).toBe(400);
+    expect((await send("PUT", `/cases/${id}/letter`, { body: "a\u0000b" })).status).toBe(400);
+    expect((await send("POST", `/cases/${id}/letter/pdf`, {})).status).toBe(400);
+  });
+
+  it("renders the posted text as a PDF and audits counts only", async () => {
+    const { send, llm } = app();
+    const id = await seedCase(db, { approve: true });
+    const res = await send("POST", `/cases/${id}/letter/pdf`, { body: "Dear Officer:\n\nText." });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/pdf");
+    expect(Buffer.from(await res.arrayBuffer()).subarray(0, 4).toString()).toBe("%PDF");
+    expect(llm.entries).toEqual([{ action: "output_generated", detail: { counts: { letter_pdf: 1 } } }]);
+  });
+
+  it("returns 409 from every letter route while a field is pending", async () => {
+    const { send } = app();
+    const id = await seedCase(db);
+    expect((await send("GET", `/cases/${id}/letter`)).status).toBe(409);
+    expect((await send("PUT", `/cases/${id}/letter`, { body: "x" })).status).toBe(409);
+    expect((await send("POST", `/cases/${id}/letter/pdf`, { body: "x" })).status).toBe(409);
+  });
+});

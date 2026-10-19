@@ -16,8 +16,11 @@ export function makeReplayProvider(): LlmProvider {
     generate: ({ prompt }) =>
       Effect.suspend(() => {
         if (prompt.startsWith("Draft a support letter")) {
-          return prompt.includes("Beneficiary name: John Doe")
-            ? Effect.succeed(JSON.stringify({ body: RECORDED_LETTER }))
+          // The attorney may approve the full name from the questionnaire, so accept either spelling
+          // and put the approved name into the recorded letter.
+          const name = /Beneficiary name: (John (?:Michael )?Doe)\n/i.exec(prompt)?.[1];
+          return name
+            ? Effect.succeed(JSON.stringify({ body: RECORDED_LETTER.replaceAll("John Doe", name) }))
             : Effect.fail(new LlmProviderError({ message: JOHN_DOE_ONLY }));
         }
         if (!prompt.includes("John Doe")) return Effect.fail(new LlmProviderError({ message: JOHN_DOE_ONLY }));
