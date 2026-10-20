@@ -1,5 +1,7 @@
 # Petition Prep
 
+![Petition Prep demo](docs/petition-demo.gif)
+
 Petition Prep turns an employee's passport, degree and offer letter into attorney-approved H-1B petition data, without sending sensitive identifiers to a third-party model. The model drafts and extracts, deterministic code checks, and an attorney approves every fact before any output exists.
 
 > **Demo mode: synthetic data only.** This build sends text to Claude via the Anthropic API. Real case files would use a self-hosted model.
